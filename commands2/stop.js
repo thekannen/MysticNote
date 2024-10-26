@@ -1,29 +1,32 @@
-import { transcribeWithWhisper } from '../utils/whisper.js';
+import { transcribeAndSummarize } from '../utils/whisper.js';
 import { stopRecording } from '../utils/recording.js';
 
 export async function stopRecordingAndTranscribe(interaction) {
   try {
-    console.log('Stopping recording...');
+    // Defer reply to let Discord know we're processing
+    await interaction.deferReply();
     
-    // Stop recording and check if it was successful
-    const recordingSuccess = await stopRecording();
-    if (!recordingSuccess) {
-      await interaction.followUp('Recording failed or no audio was saved.');
+    console.log('Stopping recording and processing transcription...');
+    const userId = interaction.member.id;
+    const username = interaction.member.user.username;
+    const recordingData = await stopRecording(userId);
+
+    if (!recordingData) {
+      await interaction.followUp(`No audio found for ${username}.`);
       return;
     }
 
-    // Notify user that transcription is in progress
-    await interaction.followUp('Recording stopped. Processing transcription...');
+    // Process transcription and summarization
+    const { summary, transcriptionFile } = await transcribeAndSummarize(recordingData.filePath, username);
 
-    // Process transcription asynchronously
-    const transcription = await transcribeWithWhisper();
-    if (transcription) {
-      await interaction.followUp(`Transcription complete: ${transcription}`);
+    if (summary) {
+      await interaction.followUp(`Summary for ${username}: ${summary}`);
+      console.log(`Full transcription saved to ${transcriptionFile}`);
     } else {
-      await interaction.followUp('Transcription failed.');
+      await interaction.followUp(`Transcription or summary failed for ${username}.`);
     }
   } catch (error) {
     console.error('Error during stop and transcribe process:', error);
-    await interaction.followUp('An error occurred while processing the transcription.');
+    await interaction.followUp('An error occurred while processing the transcription and summary.');
   }
 }
