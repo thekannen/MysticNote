@@ -24,7 +24,12 @@ export async function stopRecordingAndTranscribe(interaction) {
     const { summary, transcriptionFile } = await transcribeAndSummarize(recordingData.filePath, username);
 
     if (summary) {
-      await interaction.followUp(`Summary for ${username}: ${summary}`);
+      // Follow up on the interaction response with the summary
+      await interaction.followUp(`The orb dims, and the vision is now sealed in writing…`);
+      await interaction.followUp(`Summary: ${summary}`);
+
+      // Send a basic comment in the chat
+      interaction.channel.send(`The scrying was successful, ${interaction.user.username}. You may consult the orb for the full vision.`);
       console.log(`Full transcription saved to ${transcriptionFile}`);
     } else {
       await interaction.followUp(`Transcription or summary failed for ${username}.`);

@@ -16,5 +16,5 @@ export async function joinVoiceChannelHandler(interaction) {
     console.log('The bot has connected to the channel!');
   });
 
-  await interaction.reply('Joined the voice channel!');
+  await interaction.reply('The mystical orb swirls and reveals all voices within range…');
 }

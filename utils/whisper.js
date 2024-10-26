@@ -25,7 +25,8 @@ export async function transcribeAndSummarize(filePath, username) {
 
     const data = await response.json();
     if (data.text) {
-      const timestamp = new Date().toISOString();
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
       const transcriptionText = `${timestamp} - ${username}: ${data.text}`;
       const transcriptionFile = `transcription_${username}.txt`;
 
@@ -47,8 +48,15 @@ export async function transcribeAndSummarize(filePath, username) {
 }
 
 // Function to generate a summary of the transcription
-async function generateSummary(transcriptionText) {
-  const prompt = `Summarize the following conversation:\n\n${transcriptionText}\n\nSummary:`;
+export async function generateSummary(transcriptionText) {
+  const prompt = `
+    Here is a conversation transcript. Please summarize the conversation, ignoring any background noise, music, or non-speech sounds. Focus only on the spoken content and relevant dialog.
+
+    Transcript:
+    ${transcriptionText}
+
+    Summary:
+  `;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -1,10 +1,11 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import 'dotenv/config';
 
-import { joinVoiceChannelHandler } from './commands2/join.js';
-import { leaveVoiceChannelHandler } from './commands2/leave.js';
-import { transcribeAudioHandler } from './commands2/transcribe.js';
-import { stopRecordingAndTranscribe } from './commands2/stop.js';
+import { joinVoiceChannelHandler } from './command/join.js';
+import { leaveVoiceChannelHandler } from './command/leave.js';
+import { transcribeAudioHandler } from './command/transcribe.js';
+import { stopRecordingAndTranscribe } from './command/stop.js';
+import { revealSummary, retrieveFullTranscription } from './command/summary.js';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
@@ -17,17 +18,23 @@ client.on('interactionCreate', async (interaction) => {
     const { commandName } = interaction;
 
     switch (commandName) {
-      case 'join':
+      case 'gaze':
         await joinVoiceChannelHandler(interaction);
         break;
       case 'leave':
         await leaveVoiceChannelHandler(interaction);
         break;
-      case 'transcribe':
+      case 'begin_scrying':
         await transcribeAudioHandler(interaction);
         break;
-      case 'stop':
+      case 'end_scrying':
         await stopRecordingAndTranscribe(interaction);
+        break;
+      case 'reveal_summary':
+        await revealSummary(interaction);
+        break;
+      case 'complete_vision':
+        await retrieveFullTranscription(interaction);
         break;
       default:
         await interaction.reply({ content: 'Unknown command.', ephemeral: true });
