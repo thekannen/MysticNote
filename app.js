@@ -13,16 +13,28 @@ client.once('ready', () => console.log(`Logged in as ${client.user.tag}`));
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
-  const { commandName } = interaction;
+  try {
+    const { commandName } = interaction;
 
-  if (commandName === 'join') {
-    await joinVoiceChannelHandler(interaction);
-  } else if (commandName === 'leave') {
-    await leaveVoiceChannelHandler(interaction);
-  } else if (commandName === 'transcribe') {
-    await transcribeAudioHandler(interaction);
-  } else if (commandName === 'stop') {
-    await stopRecordingAndTranscribe(interaction);
+    switch (commandName) {
+      case 'join':
+        await joinVoiceChannelHandler(interaction);
+        break;
+      case 'leave':
+        await leaveVoiceChannelHandler(interaction);
+        break;
+      case 'transcribe':
+        await transcribeAudioHandler(interaction);
+        break;
+      case 'stop':
+        await stopRecordingAndTranscribe(interaction);
+        break;
+      default:
+        await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+    }
+  } catch (error) {
+    console.error(`Error handling command "${interaction.commandName}":`, error);
+    await interaction.reply({ content: 'An error occurred while processing your command.', ephemeral: true });
   }
 });
 

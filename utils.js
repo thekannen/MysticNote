@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'fs';
 
 export async function DiscordRequest(endpoint, options) {
   // append endpoint to root API URL
@@ -33,5 +34,15 @@ export async function InstallGlobalCommands(appId, commands) {
     } catch (err) {
       console.error('Failed to register commands:', err);
     }
+  }
+  
+  export function generateTimestamp() {
+    return new Date().toISOString();
+  }
+
+  export function cleanFiles(pattern) {
+    const files = fs.readdirSync('./').filter(file => file.includes(pattern));
+    files.forEach(file => fs.unlinkSync(file));
+    console.log(`Deleted files with pattern "${pattern}":`, files);
   }
   

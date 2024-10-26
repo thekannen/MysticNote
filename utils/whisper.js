@@ -24,14 +24,14 @@ export async function transcribeAndSummarize(filePath, username) {
     });
 
     const data = await response.json();
-
     if (data.text) {
-      const fullTranscription = `${username}: ${data.text}`;
+      const timestamp = new Date().toISOString();
+      const transcriptionText = `${timestamp} - ${username}: ${data.text}`;
       const transcriptionFile = `transcription_${username}.txt`;
 
-      // Save full transcription to a text file
-      fs.writeFileSync(transcriptionFile, fullTranscription);
-      console.log(`Full transcription saved as ${transcriptionFile}`);
+      // Save transcription with timestamp
+      fs.writeFileSync(transcriptionFile, transcriptionText);
+      console.log(`Transcription saved as ${transcriptionFile}`);
 
       // Generate summary
       const summary = await generateSummary(data.text);
@@ -58,7 +58,7 @@ async function generateSummary(transcriptionText) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo', // Using gpt-4-turbo model
+        model: 'gpt-4-turbo',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 150,
         temperature: 0.5,
@@ -66,13 +66,10 @@ async function generateSummary(transcriptionText) {
     });
 
     const data = await response.json();
-//    console.log('OpenAI API Response:', data); // Log the response for debugging
-
-    // Check if 'choices' exists and contains at least one entry
     if (data.choices && data.choices.length > 0) {
       return data.choices[0].message.content.trim();
     } else {
-      console.error('No summary available. Response did not contain expected data.');
+      console.error('No summary available.');
       return 'No summary available';
     }
   } catch (error) {
