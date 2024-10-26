@@ -18,8 +18,6 @@ export async function transcribeAudioHandler(interaction) {
   interaction.member.voice.channel.members.forEach((member) => {
     const userId = member.user.id;
     const username = member.user.username;
-
-    console.log(`Starting recording for User ID: ${userId}, Username: ${username}`);
     
     // Start recording for each user
     startRecording(connection, userId, username);

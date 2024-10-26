@@ -1,10 +1,20 @@
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import fs from 'fs';
+import path from 'path';
+import { generateTimestamp } from '../utils.js';
+import { fileURLToPath } from 'url';
 
-export async function transcribeAndSummarize(filePath, username) {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const transcriptsDir = path.join(__dirname, '../transcripts');
+if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir); // Ensure directory exists
+
+export async function transcribeAndSave(filePath, username) {
+  console.log(`Transcribing ${filePath} for ${username}`);
+
   if (!fs.existsSync(filePath)) {
-    console.error(`Audio file not found for transcription: ${filePath}`);
+    console.error(`Audio file not found: ${filePath}`);
     return null;
   }
 
@@ -13,7 +23,6 @@ export async function transcribeAndSummarize(filePath, username) {
   formData.append('model', 'whisper-1');
 
   try {
-    // Transcribe audio
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -25,20 +34,20 @@ export async function transcribeAndSummarize(filePath, username) {
 
     const data = await response.json();
     if (data.text) {
-      const now = new Date();
-      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const timestamp = generateTimestamp().replace(/[:.]/g, '-');
       const transcriptionText = `${timestamp} - ${username}: ${data.text}`;
-      const transcriptionFile = `transcription_${username}.txt`;
+      const transcriptionFile = path.join(transcriptsDir, `transcription_${username}_${timestamp}.txt`);
 
-      // Save transcription with timestamp
+      // Ensure transcripts directory exists before writing the file
+      if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir);
+
       fs.writeFileSync(transcriptionFile, transcriptionText);
       console.log(`Transcription saved as ${transcriptionFile}`);
 
-      // Generate summary
-      const summary = await generateSummary(data.text);
+      const summary = await generateSummary(data.text); // Pass transcription text, not timestamp
       return { summary, transcriptionFile };
     } else {
-      console.error('Transcription failed:', data.error);
+      console.error('Transcription failed:', data.error || 'No text received');
       return null;
     }
   } catch (error) {
@@ -47,7 +56,6 @@ export async function transcribeAndSummarize(filePath, username) {
   }
 }
 
-// Function to generate a summary of the transcription
 export async function generateSummary(transcriptionText) {
   const prompt = `
     Here is a conversation transcript. Please summarize the conversation, ignoring any background noise, music, or non-speech sounds. Focus only on the spoken content and relevant dialog.
