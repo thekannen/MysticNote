@@ -1,16 +1,19 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import 'dotenv/config';
 
-import { joinVoiceChannelHandler } from './command/join.js';
-import { leaveVoiceChannelHandler } from './command/leave.js';
-import { transcribeAudioHandler } from './command/transcribe.js';
-import { stopRecordingAndTranscribe } from './command/stop.js';
-import { revealSummary, retrieveFullTranscription } from './command/summary.js';
+import { joinVoiceChannelHandler } from './commands/gaze.js';
+import { leaveVoiceChannelHandler } from './commands/leave.js';
+import { transcribeAudioHandler } from './commands/begin_scrying.js';
+import { stopRecordingAndTranscribe } from './commands/end_scrying.js';
+import { revealSummary, retrieveFullTranscription } from './commands/summary.js';
 
+// Initialize Discord client with required intents for voice and guild interactions
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
+// Log bot's username upon successful login
 client.once('ready', () => console.log(`Logged in as ${client.user.tag}`));
 
+// Handle incoming commands
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
@@ -45,4 +48,5 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+// Log into Discord with the bot token
 client.login(process.env.BOT_TOKEN);

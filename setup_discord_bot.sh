@@ -30,10 +30,12 @@ npm install discord.js @discordjs/voice prism-media form-data node-fetch openai 
 # Add environment variable setup instructions
 echo "Setting up environment variables..."
 cat <<EOF > .env
+APP_ID=<YOUR_APP_ID>
 DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
+PUBLIC_KEY=<YOUR_PUBLIC_KEY>
 OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
 EOF
-echo "Please replace <YOUR_DISCORD_BOT_TOKEN> and <YOUR_OPENAI_API_KEY> in the .env file."
+echo "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, <YOUR_PUBLIC_KEY> and <YOUR_OPENAI_API_KEY> in the .env file."
 
 # Final message
 echo "Setup complete! Your Discord bot is ready to be configured. Run it with 'node app.js' from the dnd-scrying-notetaker directory."
