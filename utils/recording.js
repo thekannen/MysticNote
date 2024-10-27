@@ -4,6 +4,7 @@ import prism from 'prism-media';
 import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -17,7 +18,7 @@ let isScryingSessionActive = false;
 // Set the active voice connection
 export function setConnection(conn) {
   connection = conn;
-  console.log('Connection has been established and stored in recording.js');
+  logger('Connection has been established and stored in recording.js', 'info');
 }
 
 // Get the active connection for the guild
@@ -31,7 +32,7 @@ export function getActiveConnection(guildId) {
 // Clear the connection when leaving the channel
 export function clearConnection() {
   connection = null;
-  console.log('Connection has been cleared.');
+  logger('Connection has been cleared.', 'info');
 }
 
 export function setSessionName(sessionName) {
@@ -45,13 +46,13 @@ export function getSessionName() {
 // Start recording for a user
 export async function startRecording(conn, userId, username) {
   if (!conn) {
-    console.error("Connection is not established. Cannot start recording.");
+    logger("Connection is not established. Cannot start recording.", 'error');
     return;
   }
 
   // Check if connection has a valid receiver
   if (!conn.receiver) {
-    console.error("Connection does not have a valid receiver. Cannot start recording.");
+    logger("Connection does not have a valid receiver. Cannot start recording.", 'error');
     return;
   }
 
@@ -59,10 +60,10 @@ export async function startRecording(conn, userId, username) {
 
   // Create the file directory if it does not exist
   if (!currentSessionName) {
-    console.error("No active session found. Cannot start recording.");
+    logger("No active session found. Cannot start recording.", 'error');
     return;
   }
-  
+
   const sessionDir = path.join(__dirname, '../recordings', currentSessionName);
   if (!fs.existsSync(sessionDir)) {
     fs.mkdirSync(sessionDir, { recursive: true });
@@ -86,26 +87,26 @@ export async function startRecording(conn, userId, username) {
 
     // Handle recording completion
     ffmpegProcesses[userId].on('close', () => {
-      console.log(`Recording finished for ${username}, saved as ${filePath}`);
+      logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
       activeUsers.delete(userId); // Remove the user from active recording list
     });
 
     activeUsers.add(userId); // Add user to active recording list
 
     pcmStream.on('end', () => {
-      console.log(`PCM stream ended for user ${userId}`);
+      logger(`PCM stream ended for user ${userId}`, 'info');
     });
-    
+
     pcmStream.on('finish', () => {
-      console.log(`PCM stream finished for user ${userId}`);
-    });    
+      logger(`PCM stream finished for user ${userId}`, 'info');
+    });
 
     // Handle PCM stream errors
     pcmStream.on('error', (error) => {
-      console.error(`PCM stream error for ${username}:`, error);
+      logger(`PCM stream error for ${username}: ${error}`, 'error');
     });
   } catch (error) {
-    console.error(`Failed to start recording for user ${username}:`, error);
+    logger(`Failed to start recording for user ${username}: ${error}`, 'error');
   }
 }
 
@@ -115,7 +116,7 @@ export async function stopRecording(userId = null) {
     if (userId) {
       // Stop a specific user's recording
       if (!ffmpegProcesses[userId]) {
-        console.log(`No active recording found for userId: ${userId}`);
+        logger(`No active recording found for userId: ${userId}`, 'info');
         resolve(null);
         return;
       }
@@ -126,16 +127,16 @@ export async function stopRecording(userId = null) {
           ffmpegProcesses[userId].stdin.end();
           ffmpegProcesses[userId].on('close', () => {
             const filePath = ffmpegProcesses[userId].spawnargs[ffmpegProcesses[userId].spawnargs.length - 1];
-            console.log(`Stopped recording for userId: ${userId}, saved as ${filePath}`);
+            logger(`Stopped recording for userId: ${userId}, saved as ${filePath}`, 'info');
             delete ffmpegProcesses[userId];
             activeUsers.delete(userId);
             resolve({ filePath, userId });
           });
         } else {
-          console.log(`FFmpeg process for userId: ${userId} is no longer active.`);
+          logger(`FFmpeg process for userId: ${userId} is no longer active.`, 'info');
           resolve(null);
         }
-      }, 500); // Adjust delay time as necessary (e.g., 500 ms)
+      }, 500);
     } else {
       // Stop all active recordings
       const stopPromises = Object.keys(ffmpegProcesses).map(async (activeUserId) => {
@@ -144,20 +145,20 @@ export async function stopRecording(userId = null) {
             ffmpegProcesses[activeUserId].stdin.end();
             ffmpegProcesses[activeUserId].on('close', () => {
               const filePath = ffmpegProcesses[activeUserId].spawnargs[ffmpegProcesses[activeUserId].spawnargs.length - 1];
-              console.log(`Stopped recording for userId: ${activeUserId}, saved as ${filePath}`);
+              logger(`Stopped recording for userId: ${activeUserId}, saved as ${filePath}`, 'info');
               delete ffmpegProcesses[activeUserId];
               activeUsers.delete(activeUserId);
               stopResolve({ filePath, activeUserId });
             });
           } else {
-            console.log(`FFmpeg process for userId: ${activeUserId} is no longer active.`);
+            logger(`FFmpeg process for userId: ${activeUserId} is no longer active.`, 'info');
             stopResolve(null);
           }
         });
       });
 
       Promise.all(stopPromises).then((results) => {
-        console.log('All active recordings have been stopped.');
+        logger('All active recordings have been stopped.', 'info');
         resolve(results);
       });
     }
@@ -170,7 +171,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
   // If the bot is not connected to a voice channel, exit
   if (!voiceChannel || !voiceChannel.members.has(client.user.id)) {
-    console.log('Bot is not connected to the channel.');
+    logger('Bot is not connected to the channel.', 'info');
     return;
   }
 

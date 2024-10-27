@@ -25,7 +25,7 @@ cd dnd-scrying-notetaker
 
 # Install project-specific npm dependencies
 echo "Installing npm dependencies..."
-npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv
+npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
 
 # Add environment variable setup instructions
 echo "Setting up environment variables..."

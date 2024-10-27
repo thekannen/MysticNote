@@ -1,5 +1,6 @@
 import { joinVoiceChannel, VoiceConnectionStatus } from '@discordjs/voice';
 import { setConnection } from '../utils/recording.js';
+import { logger } from '../utils/logger.js';
 
 export async function joinVoiceChannelHandler(interaction) {
   if (!interaction.guild || !interaction.member.voice?.channel) {
@@ -7,11 +8,10 @@ export async function joinVoiceChannelHandler(interaction) {
       content: 'Please join a voice channel in a server for the scrying to commence.',
       ephemeral: true,
     });
-    return null; // Return null if there's no valid voice channel
+    return null;
   }
 
   try {
-    // Join the voice channel
     const connection = joinVoiceChannel({
       channelId: interaction.member.voice.channel.id,
       guildId: interaction.guild.id,
@@ -19,22 +19,18 @@ export async function joinVoiceChannelHandler(interaction) {
     });
 
     connection.on(VoiceConnectionStatus.Ready, () => {
-      console.log('The bot has connected to the channel!');
-      // Store the connection for use in recording.js
+      logger('The bot has connected to the channel!', 'info');
       setConnection(connection);
     });
 
-    // Acknowledge interaction with a reply
     await interaction.reply({
       content: 'The mystical orb swirls and reveals all voices within range…',
       ephemeral: false,
     });
 
-    return connection; // Return the connection object for other functions to use
+    return connection;
   } catch (error) {
-    console.error('Error joining voice channel:', error);
-
-    // If there is an error, reply to the interaction
+    logger('Error joining voice channel:', 'error');
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: 'An error occurred while attempting to join the voice channel.',
