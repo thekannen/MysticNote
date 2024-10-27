@@ -61,7 +61,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   fs.writeFileSync(finalFilePath, combinedTranscription);
 
   logger(`Full transcription saved as ${finalFilePath}`, 'info');
-  const summary = await generateSummary(combinedTranscription);
+  const summary = await generateSummary(combinedTranscription, sessionName);
   return { summary, transcriptionFile: finalFilePath };
 }
 
@@ -92,8 +92,8 @@ async function transcribeFileWithWhisper(filePath, username) {
   });
 }
 
-// Generates a summary from the combined transcription text
-export async function generateSummary(transcriptionText) {
+// Generates a summary from the combined transcription text and saves it to a text file
+export async function generateSummary(transcriptionText, sessionName) {
   const prompt = `
     Here is a conversation transcript. Please summarize the conversation, ignoring any background noise, music, or non-speech sounds. Focus only on the spoken content and relevant dialog.
 
@@ -122,6 +122,17 @@ export async function generateSummary(transcriptionText) {
     if (data.choices && data.choices[0]?.message?.content) {
       const summary = data.choices[0].message.content.trim();
       logger(`Summary generated: ${summary}`, 'info');
+
+      // Define the path for the summary file
+      const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
+      if (!fs.existsSync(sessionTranscriptsDir)) {
+        fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+      }
+
+      const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
+      fs.writeFileSync(summaryFilePath, summary);
+      logger(`Summary saved to ${summaryFilePath}`, 'info');
+
       return summary;
     } else {
       logger('No summary available.', 'error');
