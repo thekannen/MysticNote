@@ -6,15 +6,37 @@ import { generateTimestamp } from '../utils.js';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 const transcriptsDir = path.join(__dirname, '../transcripts');
-if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir); // Ensure directory exists
+if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir);
 
-export async function transcribeAndSave(filePath, username) {
-  console.log(`Transcribing ${filePath} for ${username}`);
+export async function transcribeAndSaveSessionFiles(sessionFiles) {
+  console.log(`Transcribing session files: ${sessionFiles.join(', ')}`);
+  let combinedTranscription = '';
 
+  for (const filePath of sessionFiles) {
+    const username = path.basename(filePath).split('_')[1];
+    console.log(`Transcribing ${filePath} for ${username}`);
+
+    const transcriptionText = await transcribeFile(filePath, username);
+    if (transcriptionText) {
+      combinedTranscription += `${transcriptionText}\n\n`;
+    } else {
+      console.error(`Transcription failed for file ${filePath}`);
+    }
+  }
+
+  const timestamp = generateTimestamp().replace(/[:.]/g, '-');
+  const finalFilePath = path.join(transcriptsDir, `full_conversation_log_${timestamp}.txt`);
+  fs.writeFileSync(finalFilePath, combinedTranscription);
+
+  console.log(`Full transcription saved as ${finalFilePath}`);
+  const summary = await generateSummary(combinedTranscription);
+  return { summary, transcriptionFile: finalFilePath };
+}
+
+async function transcribeFile(filePath, username) {
   if (!fs.existsSync(filePath)) {
-    console.error(`Audio file not found: ${filePath}`);
+    console.error(`Audio file not found for transcription: ${filePath}`);
     return null;
   }
 
@@ -34,20 +56,12 @@ export async function transcribeAndSave(filePath, username) {
 
     const data = await response.json();
     if (data.text) {
-      const timestamp = generateTimestamp().replace(/[:.]/g, '-');
+      const timestamp = new Date().toLocaleString();
       const transcriptionText = `${timestamp} - ${username}: ${data.text}`;
-      const transcriptionFile = path.join(transcriptsDir, `transcription_${username}_${timestamp}.txt`);
-
-      // Ensure transcripts directory exists before writing the file
-      if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir);
-
-      fs.writeFileSync(transcriptionFile, transcriptionText);
-      console.log(`Transcription saved as ${transcriptionFile}`);
-
-      const summary = await generateSummary(data.text); // Pass transcription text, not timestamp
-      return { summary, transcriptionFile };
+      console.log(`Transcription completed for ${username}: ${transcriptionText}`);
+      return transcriptionText;
     } else {
-      console.error('Transcription failed:', data.error || 'No text received');
+      console.error('Transcription failed:', data.error);
       return null;
     }
   } catch (error) {
@@ -82,8 +96,10 @@ export async function generateSummary(transcriptionText) {
     });
 
     const data = await response.json();
-    if (data.choices && data.choices.length > 0) {
-      return data.choices[0].message.content.trim();
+    if (data.choices && data.choices[0]?.message?.content) {
+      const summary = data.choices[0].message.content.trim();
+      console.log(`Summary generated: ${summary}`);
+      return summary;
     } else {
       console.error('No summary available.');
       return 'No summary available';
