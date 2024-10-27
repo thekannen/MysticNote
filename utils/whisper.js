@@ -19,6 +19,9 @@ const localDateFormatter = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 });
 
+// Calculate the server's timezone offset in milliseconds
+const localOffsetMs = new Date().getTimezoneOffset() * -60000;
+
 // Transcribes all audio files in a session folder and saves the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFolderPath = path.join(__dirname, '../recordings', sessionName);
@@ -47,10 +50,10 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     // Run the Python Whisper script and retrieve segments with relative timestamps
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {
-      // Adjust segment timestamps based on file creation time
+      // Adjust segment timestamps based on file creation time and convert to local time
       transcriptions.push(...transcriptionSegments.map(segment => ({
-        start: new Date(fileCreationTime.getTime() + segment.start * 1000),
-        end: new Date(fileCreationTime.getTime() + segment.end * 1000),
+        start: new Date(fileCreationTime.getTime() + segment.start * 1000 + localOffsetMs),
+        end: new Date(fileCreationTime.getTime() + segment.end * 1000 + localOffsetMs),
         username,
         text: segment.text
       })));
@@ -59,38 +62,55 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     }
   }
 
-// Define a small buffer (in milliseconds) for handling near-simultaneous segments
-const BUFFER_MS = 500;
+  // Define a small buffer (in milliseconds) for handling near-simultaneous segments
+  const BUFFER_MS = 500;
 
-// Sort segments by start time with a buffer to manage overlapping or close segments
-transcriptions.sort((a, b) => {
-  const startDiff = a.start - b.start;
+  // Sort segments by start time with a buffer to manage overlapping or close segments
+  transcriptions.sort((a, b) => {
+    const startDiff = a.start - b.start;
 
-  // If the start times are within the buffer range, apply secondary sorting logic
-  if (Math.abs(startDiff) < BUFFER_MS) {
-    const endDiff = a.end - b.end;
-    if (endDiff !== 0) return endDiff;
-    return a.username.localeCompare(b.username); // Fallback to username for consistent ordering
-  }
+    // If the start times are within the buffer range, apply secondary sorting logic
+    if (Math.abs(startDiff) < BUFFER_MS) {
+      const endDiff = a.end - b.end;
+      if (endDiff !== 0) return endDiff;
+      return a.username.localeCompare(b.username); // Fallback to username for consistent ordering
+    }
 
-  return startDiff;
-});
+    return startDiff;
+  });
 
-// Aggregate segments for readability
-const aggregatedTranscriptions = [];
-let currentSpeaker = null;
-let currentText = "";
-let currentStart = null;
-let currentEnd = null;
+  // Aggregate segments for readability
+  const aggregatedTranscriptions = [];
+  let currentSpeaker = null;
+  let currentText = "";
+  let currentStart = null;
+  let currentEnd = null;
 
-transcriptions.forEach((segment, index) => {
-  if (segment.username === currentSpeaker && segment.start - currentEnd < BUFFER_MS) {
-    // If the same speaker is talking in close succession, aggregate the segment
-    currentText += " " + segment.text;
-    currentEnd = segment.end;
-  } else {
-    // Push the previous speaker's aggregated text
-    if (currentSpeaker) {
+  transcriptions.forEach((segment, index) => {
+    if (segment.username === currentSpeaker && segment.start - currentEnd < BUFFER_MS) {
+      // If the same speaker is talking in close succession, aggregate the segment
+      currentText += " " + segment.text;
+      currentEnd = segment.end;
+    } else {
+      // Push the previous speaker's aggregated text
+      if (currentSpeaker) {
+        aggregatedTranscriptions.push({
+          start: currentStart,
+          end: currentEnd,
+          username: currentSpeaker,
+          text: currentText.trim()
+        });
+      }
+
+      // Start a new aggregated segment
+      currentSpeaker = segment.username;
+      currentText = segment.text;
+      currentStart = segment.start;
+      currentEnd = segment.end;
+    }
+
+    // Handle the last segment
+    if (index === transcriptions.length - 1) {
       aggregatedTranscriptions.push({
         start: currentStart,
         end: currentEnd,
@@ -98,38 +118,21 @@ transcriptions.forEach((segment, index) => {
         text: currentText.trim()
       });
     }
+  });
 
-    // Start a new aggregated segment
-    currentSpeaker = segment.username;
-    currentText = segment.text;
-    currentStart = segment.start;
-    currentEnd = segment.end;
-  }
+  // Format the final transcription output with server-local timestamps
+  const combinedTranscription = aggregatedTranscriptions.map(entry => {
+    const start = localDateFormatter.format(entry.start);
+    const end = localDateFormatter.format(entry.end);
+    return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
+  }).join('\n\n');
 
-  // Handle the last segment
-  if (index === transcriptions.length - 1) {
-    aggregatedTranscriptions.push({
-      start: currentStart,
-      end: currentEnd,
-      username: currentSpeaker,
-      text: currentText.trim()
-    });
-  }
-});
+  const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
+  fs.writeFileSync(finalFilePath, combinedTranscription);
 
-// Format the final transcription output with server-local timestamps
-const combinedTranscription = aggregatedTranscriptions.map(entry => {
-  const start = localDateFormatter.format(entry.start);
-  const end = localDateFormatter.format(entry.end);
-  return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
-}).join('\n\n');
-
-const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
-fs.writeFileSync(finalFilePath, combinedTranscription);
-
-logger(`Full transcription saved as ${finalFilePath}`, 'info');
-const summary = await generateSummary(combinedTranscription, sessionName);
-return { summary, transcriptionFile: finalFilePath };
+  logger(`Full transcription saved as ${finalFilePath}`, 'info');
+  const summary = await generateSummary(combinedTranscription, sessionName);
+  return { summary, transcriptionFile: finalFilePath };
 }
 
 // Runs the Python Whisper script to transcribe an audio file

@@ -2,7 +2,6 @@ import whisper
 import sys
 import json
 import warnings
-import os
 from datetime import datetime
 
 warnings.filterwarnings("ignore", category=UserWarning)
