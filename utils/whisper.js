@@ -136,14 +136,17 @@ export async function generateSummary(transcriptionText, sessionName) {
 
       // Define the path for the summary file with server-local timestamp
       const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
+      logger(`Checking if directory exists: ${sessionTranscriptsDir}`, 'debug');
       if (!fs.existsSync(sessionTranscriptsDir)) {
+        logger(`Directory does not exist, creating directory: ${sessionTranscriptsDir}`, 'debug');
         fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
       }
 
       const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
       const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
+      logger(`Writing summary to file: ${summaryFilePath}`, 'debug');
       fs.writeFileSync(summaryFilePath, summary);
-      logger(`Summary saved to ${summaryFilePath}`, 'info');
+      logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
 
       return summary;
     } else {
@@ -151,7 +154,7 @@ export async function generateSummary(transcriptionText, sessionName) {
       return 'No summary available';
     }
   } catch (error) {
-    logger('Failed to generate summary:', 'error');
+    logger(`Failed to generate summary: ${error.message}`, 'error');
     return 'Summary generation failed';
   }
 }
