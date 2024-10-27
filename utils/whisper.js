@@ -38,19 +38,19 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
   for (const file of sessionFiles) {
     const filePath = path.join(sessionFolderPath, file);
-    const username = path.basename(file).split('_')[1];
+    const username = path.basename(file).split('_')[1]; // Use username from file name
     const fileCreationTime = fs.statSync(filePath).birthtime; // Capture file creation time as starting timestamp
 
     logger(`Transcribing ${filePath} for ${username}`, 'info');
 
-    // Run the Python Whisper script and retrieve segments with relative timestamps
+    // Run the Python Whisper script with speaker information
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {
-      // Adjust segment timestamps based on file creation time
+      // Adjust segment timestamps based on file creation time and merge
       transcriptions.push(...transcriptionSegments.map(segment => ({
         start: new Date(fileCreationTime.getTime() + segment.start * 1000),
         end: new Date(fileCreationTime.getTime() + segment.end * 1000),
-        username,
+        username: segment.speaker,
         text: segment.text
       })));
     } else {
@@ -81,7 +81,7 @@ async function transcribeFileWithWhisper(filePath, username) {
   const pythonScript = path.join(__dirname, 'whisper_transcribe.py');
 
   return new Promise((resolve, reject) => {
-    execFile('python3', [pythonScript, filePath], (error, stdout, stderr) => {
+    execFile('python3', [pythonScript, filePath, username], (error, stdout, stderr) => {
       if (error) {
         logger(`Error during transcription for ${username}: ${error.message}`, 'error');
         reject(error);
