@@ -134,27 +134,34 @@ export async function generateSummary(transcriptionText, sessionName) {
       const summary = data.choices[0].message.content.trim();
       logger(`Summary generated: ${summary}`, 'info');
 
-      // Define the path for the summary file with server-local timestamp
-      const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
-      logger(`Checking if directory exists: ${sessionTranscriptsDir}`, 'debug');
-      if (!fs.existsSync(sessionTranscriptsDir)) {
-        logger(`Directory does not exist, creating directory: ${sessionTranscriptsDir}`, 'debug');
-        fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+      try {
+        // Define the path for the summary file with server-local timestamp
+        const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
+        logger(`Checking if directory exists: ${sessionTranscriptsDir}`, 'debug');
+        if (!fs.existsSync(sessionTranscriptsDir)) {
+          logger(`Directory does not exist, creating directory: ${sessionTranscriptsDir}`, 'debug');
+          fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+        }
+
+        const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
+        const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
+        
+        logger(`Attempting to write summary to file: ${summaryFilePath}`, 'debug');
+        fs.writeFileSync(summaryFilePath, summary);
+        logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
+
+        return summary;
+      } catch (fileError) {
+        logger(`Failed to save summary file: ${fileError.message}`, 'error');
+        return 'Failed to save summary to file.';
       }
 
-      const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
-      const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
-      logger(`Writing summary to file: ${summaryFilePath}`, 'debug');
-      fs.writeFileSync(summaryFilePath, summary);
-      logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
-
-      return summary;
     } else {
       logger('No summary available.', 'error');
       return 'No summary available';
     }
-  } catch (error) {
-    logger(`Failed to generate summary: ${error.message}`, 'error');
+  } catch (apiError) {
+    logger(`Failed to generate summary: ${apiError.message}`, 'error');
     return 'Summary generation failed';
   }
 }

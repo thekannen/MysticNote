@@ -2,13 +2,15 @@ import whisper
 import sys
 import json
 import warnings
+import os
+from datetime import datetime
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 def transcribe_with_timestamps(file_path):
     model = whisper.load_model("medium")  # Use "base", "small", "medium", or "large" based on resources
-    result = model.transcribe(file_path)  # Full JSON result, not limited to segments
+    result = model.transcribe(file_path)
 
     # Collect segments with timestamps (for direct return to calling code)
     segments = []
@@ -19,7 +21,7 @@ def transcribe_with_timestamps(file_path):
             "text": segment["text"]
         })
 
-    return segments
+    return result, segments
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -27,7 +29,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     file_path = sys.argv[1]
-    segments = transcribe_with_timestamps(file_path)
+    result, segments = transcribe_with_timestamps(file_path)
 
-    # Output only the segments JSON to stdout for the bot to process
+    # Print only the simplified segments JSON to stdout for the bot to process
     print(json.dumps(segments))
