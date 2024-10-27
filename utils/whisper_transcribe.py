@@ -10,25 +10,22 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 def transcribe_with_timestamps(file_path):
     model = whisper.load_model("base")  # Use "base", "small", "medium", or "large" based on resources
-    result = model.transcribe(file_path, word_timestamps=True)  # Enable word-level timestamps
+    result = model.transcribe(file_path)  # Full JSON result, not limited to segments
 
-    # Collect segments with word-level timestamps for auditing
+    # Collect segments with timestamps (for direct return to calling code)
     segments = []
     for segment in result["segments"]:
-        words = segment.get("words", [])
-        word_text = " ".join([word["text"] for word in words])
         segments.append({
             "start": segment["start"],
             "end": segment["end"],
-            "text": word_text,
-            "words": words  # Detailed word-level data
+            "text": segment["text"]
         })
 
     return result, segments
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python whisper_transcribe.py <path_to_audio_file>", file=sys.stderr)
+        print("Usage: python whisper_transcribe.py <path_to_audio_file>")
         sys.exit(1)
 
     file_path = sys.argv[1]
@@ -44,7 +41,6 @@ if __name__ == "__main__":
     with open(audit_file_path, "w") as audit_file:
         json.dump(result, audit_file, indent=2)
 
-    # Send audit message to stderr
-    print(f"Audit JSON saved to: {audit_file_path}", file=sys.stderr)
-    # Print only the simplified segments JSON to stdout for the bot to process
-    print(json.dumps(segments))
+    # Print the path to the audit file for easy access and the segments JSON for direct use
+    print(f"Audit JSON saved to: {audit_file_path}")
+    print(json.dumps(segments))  # Output the simplified segments JSON to stdout
