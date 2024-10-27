@@ -15,9 +15,7 @@ def transcribe_with_timestamps(file_path):
     # Transcribe with custom parameters for finer granularity
     result = model.transcribe(
         file_path, 
-        word_timestamps=True,         # Enables word-level timestamps
         condition_on_previous_text=False, # Prevents reliance on previous segments, useful for more granular segmentation
-        initial_prompt=None            # Avoids using a specific initial prompt
     )
 
     # Collect segments with timestamps
