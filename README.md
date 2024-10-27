@@ -40,72 +40,148 @@ Ensure you have the following on your server:
 
 ### Manual Installation
 If you prefer to install manually:
-1. Clone the Repository: 
-   ```bash
-   git clone https://github.com/thekannen/dnd-scrying-notetaker.git
-   cd dnd-scrying-notetaker"
-
-2. Install Node.js and npm (using NodeSource for the latest LTS version)
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt install -y nodejs"
-
-3. Verify Node.js and npm installation
-   ```bash
-   node -v
-   npm -v"
-
-4. Install FFmpeg and other dependencies:
+1. Install server prerequisites:
    ```bash
    sudo apt update
-   sudo apt install -y build-essential ffmpeg python3 python3-pip git"
+   sudo apt install -y build-essential ffmpeg python3 python3-pip git
 
-5. Install Node.js Dependencies:
+2. Clone the Repository: 
    ```bash
-   npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv"
+   git clone https://github.com/thekannen/dnd-scrying-notetaker.git
+   cd dnd-scrying-notetaker
 
-6. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+3. Install Node.js and npm (using NodeSource for the latest LTS version):
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt install -y nodejs
+
+4. Verify Node.js and npm installation:
+   ```bash
+   node -v
+   npm -v
+
+5. Install FFmpeg and other dependencies:
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential ffmpeg python3 python3-pip git
+
+6. Install Node.js Dependencies:
+   ```bash
+   npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv
+
+7. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
    ```plaintext
    APP_ID=<YOUR_APP_ID>
    DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
    PUBLIC_KEY=<YOUR_PUBLIC_KEY>
-   OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>"
+   OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
 
-7. Start the bot
+8. Register the commands:
    ```bash
-   node app.js"
+   node register_commands.js
+
+9. Start the bot:
+   ```bash
+   node app.js
+
+### Optional to auto-start with pm2
+1. Install pm2 to global install as signed in user:
+   ```bash
+   cd dnd-scrying-notetaker
+   sudo npm install pm2 -g
+
+2. Start the bot with pm2:
+   ```bash
+   pm2 start app.js --name "dnd-scrying-bot"
+
+3. Save the pm2 process list and startup:
+   ```bash
+   pm2 save
+   pm2 startup
 
 ---
 
-## Usage
+## Updates
 
-The DnD Scrying Notetaker Bot provides a set of magical commands to interact with and control scrying sessions. Use these commands within your Discord server to capture, transcribe, and review voice channel interactions.
+1. To update the bot, please pull from the git main repository:
+   ```bash
+   cd dnd-scrying-notetaker
+   git pull origin main
+
+---
+
+# Usage
+
+The bot provides a collection of commands to interact with voice channels and manage transcriptions. Here is a summary of the available commands:
 
 ### Commands
 
-- **`/gaze`**
-  - **Description**: The bot enters the voice channel, ready to capture the voices of those unseen.
-  
-- **`/leave`**
-  - **Description**: The bot vanishes from the voice channel, ending the magical vision.
-  
-- **`/begin_scrying`**
-  - **Description**: Initiates recording of spoken words in the voice channel, as if seen through a crystal ball.
-  
-- **`/end_scrying`**
-  - **Description**: Stops the current recording, finalizing the vision and preparing it for transcription.
-  
-- **`/reveal_summary`**
-  - **Description**: Receives a concise summary of the last scrying session, providing an overview of the captured voices.
-  
-- **`/complete_vision`**
-  - **Description**: Retrieves the full transcription of the scryed voices, as written by the orb.
+1. **`/gaze`**
+   - The bot enters the voice channel, peering into the voices of the unseen.
 
-### Example Workflow
+2. **`/leave`**
+   - The bot vanishes, ending the magical vision and leaving the voice channel.
 
-1. **Start a Scrying Session**: Enter the voice channel and initiate recording with `/gaze` followed by `/begin_scrying`.
-2. **End the Session**: Use `/end_scrying` and then `/leave` to complete the session.
-3. **Retrieve Transcriptions**: Use `/reveal_summary` for a concise summary or `/complete_vision` for a full transcription of the session.
+3. **`/begin_scrying`**
+   - Start recording the words spoken in the channel, capturing them as if seen through a crystal ball.
+   - **Options**: 
+     - `session`: The name of the session (up to 50 characters, must be unique).
+
+4. **`/end_scrying`**
+   - Cease recording, finalizing the vision.
+
+5. **`/consult_the_texts`**
+   - Lists all the scrying sessions saved to the wizard's tome.
+
+6. **`/reveal_summary`**
+   - Receive a concise vision of the last scrying session.
+   - **Options**: 
+     - `session`: The name of the session you wish to summarize.
+
+7. **`/complete_vision`**
+   - Retrieve the full record of the scryed voices, as written by the orb.
+   - **Options**: 
+     - `session`: The name of the session you wish to reveal.
+
+8. **`/delete_session`**
+   - Deletes all recordings and transcripts for a specific session. Use with caution!
+   - **Options**: 
+     - `session`: The name of the session you wish to delete.
+
+9. **`/purge`**
+   - Deletes all recordings and transcripts for every session. Use with extreme caution!
+   - **Options**: 
+     - `confirmation`: Type "y" to delete everything! This cannot be undone!
+
+
+# Example Workflow
+
+Here's an example of how you might use the bot commands to record, summarize, and manage voice channel sessions:
+
+1. **Entering a Voice Channel**:  
+   - Use the command `/gaze` to have the bot join the voice channel.
+
+2. **Start Recording**:  
+   - Run `/begin_scrying session:YourSessionName` to begin recording the session. Make sure the session name is unique and within 50 characters.
+
+3. **End Recording**:  
+   - Use `/end_scrying` to stop the recording when done.
+
+4. **Check Available Sessions**:  
+   - Use `/consult_the_texts` to see a list of saved scrying sessions.
+
+5. **Summarize a Session**:  
+   - To get a summary of a recorded session, use `/reveal_summary session:YourSessionName`.
+
+6. **Retrieve the Full Transcript**:  
+   - Run `/complete_vision session:YourSessionName` to access the full transcription of the session.
+
+7. **Delete a Session**:  
+   - Use `/delete_session session:YourSessionName` if you no longer need the recording and transcription for a specific session.
+
+8. **Clear All Sessions**:  
+   - With caution, use `/purge confirmation:y` to delete all recordings and transcriptions from every session.
+
 
 Each command offers a unique interaction with the bot, allowing for seamless integration into your D&D sessions.
 
