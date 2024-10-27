@@ -1,9 +1,14 @@
 import whisper
 import sys
 import json
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 def transcribe_with_timestamps(file_path):
-    model = whisper.load_model("base")  # Use "base", "small", "medium", or "large" based on resources
+    model = whisper.load_model("medium")  # Use "base", "small", "medium", or "large" based on resources
     result = model.transcribe(file_path)
 
     # Collect segments with timestamps

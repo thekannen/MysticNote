@@ -21,22 +21,25 @@ export async function revealSummary(interaction) {
       return;
     }
 
-    const files = fs.readdirSync(sessionTranscriptDir).filter(file => file.endsWith('.txt'));
-    if (files.length === 0) {
-      await interaction.reply('No transcripts found for the specified session.');
+    // Find the latest summary file for the session
+    const summaryFiles = fs.readdirSync(sessionTranscriptDir)
+      .filter(file => file.startsWith('summary_') && file.endsWith('.txt'));
+
+    if (summaryFiles.length === 0) {
+      await interaction.reply('No summary found for the specified session.');
       return;
     }
 
-    const sortedFiles = files
+    // Sort summary files by modification time to get the most recent
+    const latestSummaryFile = summaryFiles
       .map(file => ({ file, time: fs.statSync(path.join(sessionTranscriptDir, file)).mtime }))
-      .sort((a, b) => b.time - a.time);
+      .sort((a, b) => b.time - a.time)[0].file;
 
-    const transcriptionFile = path.join(sessionTranscriptDir, sortedFiles[0].file);
-    const transcriptionText = fs.readFileSync(transcriptionFile, 'utf-8');
-    const summary = await generateSummary(transcriptionText);
+    const summaryFilePath = path.join(sessionTranscriptDir, latestSummaryFile);
+    const summaryText = fs.readFileSync(summaryFilePath, 'utf-8');
 
-    if (summary) {
-      await interaction.reply(`A brief vision appears… Here is the essence of what was revealed:\n\n${summary}`);
+    if (summaryText) {
+      await interaction.reply(`A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`);
     } else {
       await interaction.reply('Unable to reveal the summary of the vision.');
     }
