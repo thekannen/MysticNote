@@ -26,11 +26,13 @@ def transcribe_with_timestamps(file_path):
         # If word-level timestamps are enabled, break down segments by words
         if "words" in segment:
             for word_info in segment["words"]:
-                segments.append({
-                    "start": word_info["start"],
-                    "end": word_info["end"],
-                    "text": word_info["text"]
-                })
+                # Only add words that have both 'start', 'end', and 'text' attributes
+                if "start" in word_info and "end" in word_info and "text" in word_info:
+                    segments.append({
+                        "start": word_info["start"],
+                        "end": word_info["end"],
+                        "text": word_info["text"]
+                    })
         else:
             # Fallback to the whole segment if word-level timestamps are not provided
             segments.append({
