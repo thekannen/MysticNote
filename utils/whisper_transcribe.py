@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 def transcribe_with_timestamps(file_path):
     # Load the Whisper model
-    model = whisper.load_model("medium")  # Use "base", "small", "medium", or "large" based on resources
+    model = whisper.load_model("base")  # Use "base", "small", "medium", or "large" based on resources
     
     # Transcribe with custom parameters for finer granularity
     result = model.transcribe(

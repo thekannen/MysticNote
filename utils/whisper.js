@@ -59,38 +59,77 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     }
   }
 
-  // Log each segment's timestamp and username for debugging purposes
-  transcriptions.forEach(entry => {
-    logger(`Segment: ${entry.username}, Start: ${entry.start}, End: ${entry.end}, Text: ${entry.text}`, 'debug');
-  });
+// Define a small buffer (in milliseconds) for handling near-simultaneous segments
+const BUFFER_MS = 500;
 
-  // Ensure segments are sorted by start time, then end time, and finally by username if necessary
-  transcriptions.sort((a, b) => {
-    if (a.start - b.start !== 0) {
-      return a.start - b.start;
+// Sort segments by start time with a buffer to manage overlapping or close segments
+transcriptions.sort((a, b) => {
+  const startDiff = a.start - b.start;
+
+  // If the start times are within the buffer range, apply secondary sorting logic
+  if (Math.abs(startDiff) < BUFFER_MS) {
+    const endDiff = a.end - b.end;
+    if (endDiff !== 0) return endDiff;
+    return a.username.localeCompare(b.username); // Fallback to username for consistent ordering
+  }
+
+  return startDiff;
+});
+
+// Aggregate segments for readability
+const aggregatedTranscriptions = [];
+let currentSpeaker = null;
+let currentText = "";
+let currentStart = null;
+let currentEnd = null;
+
+transcriptions.forEach((segment, index) => {
+  if (segment.username === currentSpeaker && segment.start - currentEnd < BUFFER_MS) {
+    // If the same speaker is talking in close succession, aggregate the segment
+    currentText += " " + segment.text;
+    currentEnd = segment.end;
+  } else {
+    // Push the previous speaker's aggregated text
+    if (currentSpeaker) {
+      aggregatedTranscriptions.push({
+        start: currentStart,
+        end: currentEnd,
+        username: currentSpeaker,
+        text: currentText.trim()
+      });
     }
-    // Secondary sort by end time to maintain order when start times are very close
-    if (a.end - b.end !== 0) {
-      return a.end - b.end;
-    }
-    // Final sort by username to maintain order when both start and end times are identical
-    return a.username.localeCompare(b.username);
-  });
 
+    // Start a new aggregated segment
+    currentSpeaker = segment.username;
+    currentText = segment.text;
+    currentStart = segment.start;
+    currentEnd = segment.end;
+  }
 
-  // Format the transcription into a readable log with server-local timestamps
-  const combinedTranscription = transcriptions.map(entry => {
-    const start = localDateFormatter.format(entry.start);
-    const end = localDateFormatter.format(entry.end);
-    return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
-  }).join('\n\n');
+  // Handle the last segment
+  if (index === transcriptions.length - 1) {
+    aggregatedTranscriptions.push({
+      start: currentStart,
+      end: currentEnd,
+      username: currentSpeaker,
+      text: currentText.trim()
+    });
+  }
+});
 
-  const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
-  fs.writeFileSync(finalFilePath, combinedTranscription);
+// Format the final transcription output with server-local timestamps
+const combinedTranscription = aggregatedTranscriptions.map(entry => {
+  const start = localDateFormatter.format(entry.start);
+  const end = localDateFormatter.format(entry.end);
+  return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
+}).join('\n\n');
 
-  logger(`Full transcription saved as ${finalFilePath}`, 'info');
-  const summary = await generateSummary(combinedTranscription, sessionName);
-  return { summary, transcriptionFile: finalFilePath };
+const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
+fs.writeFileSync(finalFilePath, combinedTranscription);
+
+logger(`Full transcription saved as ${finalFilePath}`, 'info');
+const summary = await generateSummary(combinedTranscription, sessionName);
+return { summary, transcriptionFile: finalFilePath };
 }
 
 // Runs the Python Whisper script to transcribe an audio file
