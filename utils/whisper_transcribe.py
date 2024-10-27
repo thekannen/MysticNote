@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 def transcribe_with_timestamps(file_path):
-    model = whisper.load_model("base")  # Use "base", "small", "medium", or "large" based on resources
+    model = whisper.load_model("medium")  # Use "base", "small", "medium", or "large" based on resources
     result = model.transcribe(file_path)  # Full JSON result, not limited to segments
 
     # Collect segments with timestamps (for direct return to calling code)
@@ -41,6 +41,7 @@ if __name__ == "__main__":
     with open(audit_file_path, "w") as audit_file:
         json.dump(result, audit_file, indent=2)
 
-    # Print the path to the audit file for easy access and the segments JSON for direct use
-    print(f"Audit JSON saved to: {audit_file_path}")
-    print(json.dumps(segments))  # Output the simplified segments JSON to stdout
+    # Send audit message to stderr
+    print(f"Audit JSON saved to: {audit_file_path}", file=sys.stderr)
+    # Print only the simplified segments JSON to stdout for the bot to process
+    print(json.dumps(segments))
