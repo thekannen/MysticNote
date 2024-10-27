@@ -7,6 +7,17 @@ import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Date formatter for consistent server-local time
+const localDateFormatter = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
 // Transcribes all audio files in a session folder and saves the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFolderPath = path.join(__dirname, '../recordings', sessionName);
@@ -50,10 +61,10 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   // Sort all segments by their actual start time
   transcriptions.sort((a, b) => a.start - b.start);
 
-  // Format the transcription into a readable log with timestamps
+  // Format the transcription into a readable log with server-local timestamps
   const combinedTranscription = transcriptions.map(entry => {
-    const start = entry.start.toLocaleString();
-    const end = entry.end.toLocaleString();
+    const start = localDateFormatter.format(entry.start);
+    const end = localDateFormatter.format(entry.end);
     return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
   }).join('\n\n');
 
@@ -123,13 +134,14 @@ export async function generateSummary(transcriptionText, sessionName) {
       const summary = data.choices[0].message.content.trim();
       logger(`Summary generated: ${summary}`, 'info');
 
-      // Define the path for the summary file
-      const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
+      // Define the path for the summary file with server-local timestamp
+      const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
       if (!fs.existsSync(sessionTranscriptsDir)) {
         fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
       }
 
-      const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
+      const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
+      const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
       fs.writeFileSync(summaryFilePath, summary);
       logger(`Summary saved to ${summaryFilePath}`, 'info');
 

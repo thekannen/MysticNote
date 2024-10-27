@@ -14,7 +14,7 @@ export async function stopRecordingAndTranscribe(interaction) {
     // Initial reply asking for patience
     await interaction.reply({
       content: 'Stopping the scrying and processing the vision… This may take a while. Please remain patient and do not leave.',
-      ephemeral: true
+      ephemeral: false
     });
     logger('Stopping recording and processing transcription...', 'info');
 
