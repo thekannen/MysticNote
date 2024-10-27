@@ -21,7 +21,7 @@ export async function revealSummary(interaction) {
       return;
     }
 
-    // Find the latest summary file for the session
+    // Find all files with the prefix 'summary_'
     const summaryFiles = fs.readdirSync(sessionTranscriptDir)
       .filter(file => file.startsWith('summary_') && file.endsWith('.txt'));
 
@@ -63,19 +63,28 @@ export async function retrieveFullTranscription(interaction) {
       return;
     }
 
-    const files = fs.readdirSync(sessionTranscriptDir).filter(file => file.endsWith('.txt'));
-    if (files.length === 0) {
-      await interaction.reply('No transcripts found for the specified session.');
+    // Find all files with the prefix 'full_'
+    const fullTranscriptFiles = fs.readdirSync(sessionTranscriptDir)
+      .filter(file => file.startsWith('full_') && file.endsWith('.txt'));
+
+    if (fullTranscriptFiles.length === 0) {
+      await interaction.reply('No full transcription found for the specified session.');
       return;
     }
 
-    const sortedFiles = files
+    // Sort full transcription files by modification time to get the most recent
+    const latestFullTranscriptFile = fullTranscriptFiles
       .map(file => ({ file, time: fs.statSync(path.join(sessionTranscriptDir, file)).mtime }))
-      .sort((a, b) => b.time - a.time);
+      .sort((a, b) => b.time - a.time)[0].file;
 
-    const transcriptionFile = path.join(sessionTranscriptDir, sortedFiles[0].file);
-    const transcriptionText = fs.readFileSync(transcriptionFile, 'utf-8');
-    await interaction.reply(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
+    const fullTranscriptFilePath = path.join(sessionTranscriptDir, latestFullTranscriptFile);
+    const transcriptionText = fs.readFileSync(fullTranscriptFilePath, 'utf-8');
+
+    if (transcriptionText) {
+      await interaction.reply(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
+    } else {
+      await interaction.reply('Unable to retrieve the full transcription.');
+    }
   } catch (error) {
     logger('Error retrieving full transcription:', 'error');
     await interaction.reply('An error occurred while attempting to retrieve the full transcription.');

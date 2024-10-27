@@ -14,11 +14,15 @@ let ffmpegProcesses = {}; // Stores ffmpeg processes for each user
 let activeUsers = new Set(); // Tracks users actively being recorded
 let currentSessionName = null;
 let isScryingSessionActive = false;
+let inactivityTimeout = null; // Timer for session inactivity
+
+const INACTIVITY_LIMIT = 300000; // 5 minutes in milliseconds
 
 // Set the active voice connection
 export function setConnection(conn) {
   connection = conn;
   logger('Connection has been established and stored in recording.js', 'info');
+  resetInactivityTimer(); // Reset timer when connection is established
 }
 
 // Get the active connection for the guild
@@ -33,6 +37,37 @@ export function getActiveConnection(guildId) {
 export function clearConnection() {
   connection = null;
   logger('Connection has been cleared.', 'info');
+  clearInactivityTimer(); // Stop the timer when connection is cleared
+}
+
+// Initialize or reset the inactivity timer
+function resetInactivityTimer() {
+  if (inactivityTimeout) {
+    clearTimeout(inactivityTimeout);
+  }
+
+  inactivityTimeout = setTimeout(() => {
+    logger('No audio detected for 5 minutes. Ending scrying session due to inactivity.', 'info');
+    endScryingSession();
+  }, INACTIVITY_LIMIT);
+}
+
+// Clear the inactivity timer
+function clearInactivityTimer() {
+  if (inactivityTimeout) {
+    clearTimeout(inactivityTimeout);
+    inactivityTimeout = null;
+  }
+}
+
+// End the scrying session
+async function endScryingSession() {
+  if (isScryingSessionActive) {
+    await stopRecording(); // Stop all active recordings
+    setScryingSessionActive(false);
+    clearConnection();
+    logger('Scrying session ended due to inactivity.', 'info');
+  }
 }
 
 export function setSessionName(sessionName) {
@@ -50,7 +85,6 @@ export async function startRecording(conn, userId, username) {
     return;
   }
 
-  // Check if connection has a valid receiver
   if (!conn.receiver) {
     logger("Connection does not have a valid receiver. Cannot start recording.", 'error');
     return;
@@ -58,7 +92,6 @@ export async function startRecording(conn, userId, username) {
 
   await stopRecording(userId); // Stop existing recording for the user, if any
 
-  // Create the file directory if it does not exist
   if (!currentSessionName) {
     logger("No active session found. Cannot start recording.", 'error');
     return;
@@ -80,18 +113,19 @@ export async function startRecording(conn, userId, username) {
 
     // Spawn ffmpeg process for recording PCM stream to a file
     ffmpegProcesses[userId] = spawn('ffmpeg', [
-      '-y','-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
+      '-y', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
     ]);
 
     pcmStream.pipe(ffmpegProcesses[userId].stdin);
 
-    // Handle recording completion
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
-      activeUsers.delete(userId); // Remove the user from active recording list
+      activeUsers.delete(userId);
+      resetInactivityTimer(); // Reset inactivity timer on audio activity
     });
 
-    activeUsers.add(userId); // Add user to active recording list
+    activeUsers.add(userId);
+    resetInactivityTimer(); // Reset inactivity timer whenever recording starts
 
     pcmStream.on('end', () => {
       logger(`PCM stream ended for user ${userId}`, 'info');
@@ -101,7 +135,6 @@ export async function startRecording(conn, userId, username) {
       logger(`PCM stream finished for user ${userId}`, 'info');
     });
 
-    // Handle PCM stream errors
     pcmStream.on('error', (error) => {
       logger(`PCM stream error for ${username}: ${error}`, 'error');
     });
@@ -114,14 +147,12 @@ export async function startRecording(conn, userId, username) {
 export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
-      // Stop a specific user's recording
       if (!ffmpegProcesses[userId]) {
         logger(`No active recording found for userId: ${userId}`, 'info');
         resolve(null);
         return;
       }
 
-      // Adding a small delay before ending the stream
       setTimeout(() => {
         if (ffmpegProcesses[userId] && ffmpegProcesses[userId].stdin) {
           ffmpegProcesses[userId].stdin.end();
@@ -130,6 +161,7 @@ export async function stopRecording(userId = null) {
             logger(`Stopped recording for userId: ${userId}, saved as ${filePath}`, 'info');
             delete ffmpegProcesses[userId];
             activeUsers.delete(userId);
+            resetInactivityTimer();
             resolve({ filePath, userId });
           });
         } else {
@@ -138,7 +170,6 @@ export async function stopRecording(userId = null) {
         }
       }, 500);
     } else {
-      // Stop all active recordings
       const stopPromises = Object.keys(ffmpegProcesses).map(async (activeUserId) => {
         return new Promise((stopResolve) => {
           if (ffmpegProcesses[activeUserId] && ffmpegProcesses[activeUserId].stdin) {
@@ -159,6 +190,7 @@ export async function stopRecording(userId = null) {
 
       Promise.all(stopPromises).then((results) => {
         logger('All active recordings have been stopped.', 'info');
+        clearInactivityTimer();
         resolve(results);
       });
     }
@@ -169,7 +201,6 @@ export async function stopRecording(userId = null) {
 client.on('voiceStateUpdate', async (oldState, newState) => {
   const voiceChannel = newState.channel || oldState.channel;
 
-  // If the bot is not connected to a voice channel, exit
   if (!voiceChannel || !voiceChannel.members.has(client.user.id)) {
     logger('Bot is not connected to the channel.', 'info');
     return;
@@ -178,22 +209,22 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const userId = newState.member.id;
   const username = newState.member.user.username;
 
-  // User joined the voice channel
   if (!oldState.channelId && newState.channelId && isScryingSessionActive) {
     startRecording(connection, userId, username);
-  }
-  // User left the voice channel
-  else if (oldState.channelId && !newState.channelId && isScryingSessionActive) {
+  } else if (oldState.channelId && !newState.channelId && isScryingSessionActive) {
     await stopRecording(userId);
   }
 });
 
-// Log in to Discord with the bot token
 client.login(process.env.BOT_TOKEN);
 
-// Manage session state
 export function setScryingSessionActive(isActive) {
   isScryingSessionActive = isActive;
+  if (isActive) {
+    resetInactivityTimer();
+  } else {
+    clearInactivityTimer();
+  }
 }
 
 export function isScryingSessionOngoing() {
