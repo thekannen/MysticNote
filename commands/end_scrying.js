@@ -1,5 +1,6 @@
 import { transcribeAndSaveSessionFolder } from '../utils/whisper.js';
-import { stopRecording, getSessionName, setSessionName,  setScryingSessionActive } from '../utils/recording.js';
+import { stopRecording, getSessionName, setSessionName, setScryingSessionActive } from '../utils/recording.js';
+import { logger } from '../utils/logger.js';
 
 export async function stopRecordingAndTranscribe(interaction) {
   try {
@@ -11,15 +12,15 @@ export async function stopRecordingAndTranscribe(interaction) {
     }
 
     await interaction.deferReply();
-    console.log('Stopping recording and processing transcription...');
+    logger('Stopping recording and processing transcription...', 'info');
 
     // Stop all active recordings
-    await stopRecording(); // Stops all users' recordings
+    await stopRecording();
 
     const { summary, transcriptionFile } = await transcribeAndSaveSessionFolder(sessionName);
     if (summary) {
       await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
-      console.log(`Transcription saved to ${transcriptionFile}`);
+      logger(`Transcription saved to ${transcriptionFile}`, 'info');
     } else {
       await interaction.editReply('Transcription or summary failed.');
       setScryingSessionActive(false);
@@ -30,7 +31,7 @@ export async function stopRecordingAndTranscribe(interaction) {
     setScryingSessionActive(false);
 
   } catch (error) {
-    console.error('Error during stop and transcribe process:', error);
+    logger('Error during stop and transcribe process:', 'error');
     await interaction.editReply('An error occurred while processing the transcription and summary.');
     setScryingSessionActive(false);
   }

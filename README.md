@@ -46,7 +46,7 @@ Ensure you have the following on your server:
 
 1. Clone the repository and install dependencies by running the following command:
    ```bash
-   bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup_discord_bot.sh)"
+   bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup_discord_bot.sh)
 
 ### Manual Installation
 If you prefer to install manually:
@@ -77,7 +77,7 @@ If you prefer to install manually:
 
 6. Install Node.js Dependencies:
    ```bash
-   npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv
+   npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
 
 7. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
    ```plaintext
@@ -85,7 +85,7 @@ If you prefer to install manually:
    DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
    PUBLIC_KEY=<YOUR_PUBLIC_KEY>
    OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
-
+   
 8. Register the commands:
    ```bash
    node register_commands.js

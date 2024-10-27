@@ -4,56 +4,68 @@ import fs from 'fs';
 import path from 'path';
 import { generateTimestamp } from '../utils.js';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Transcribes all audio files in a session folder and saves the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFolderPath = path.join(__dirname, '../recordings', sessionName);
   if (!fs.existsSync(sessionFolderPath)) {
-    console.error(`Session folder not found: ${sessionFolderPath}`);
+    logger(`Session folder not found: ${sessionFolderPath}`, 'error');
     return { summary: null, transcriptionFile: null };
   }
 
   // Get all .wav files in the session folder
   const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
-  console.log(`Transcribing session files from folder: ${sessionFolderPath}`);
+  logger(`Transcribing session files from folder: ${sessionFolderPath}`, 'info');
 
-  let combinedTranscription = '';
   const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
   if (!fs.existsSync(sessionTranscriptsDir)) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
   }
 
+  // Collect transcriptions with timestamps
+  let transcriptions = [];
+
   for (const file of sessionFiles) {
     const filePath = path.join(sessionFolderPath, file);
     const username = path.basename(file).split('_')[1];
-    console.log(`Transcribing ${filePath} for ${username}`);
+    const fileCreationTime = fs.statSync(filePath).birthtime; // Capture file creation time as starting timestamp
 
-    const transcriptionText = await transcribeFile(filePath, username);
+    logger(`Transcribing ${filePath} for ${username}`, 'info');
+
+    const transcriptionText = await transcribeFile(filePath, username, fileCreationTime);
     if (transcriptionText) {
-      combinedTranscription += `${transcriptionText}\n\n`;
-
-      // Save individual transcription files in the session directory
-      const timestamp = generateTimestamp().replace(/[:.]/g, '-');
-      const individualFilePath = path.join(sessionTranscriptsDir, `transcription_${username}_${timestamp}.txt`);
-      fs.writeFileSync(individualFilePath, transcriptionText);
+      transcriptions.push({
+        timestamp: fileCreationTime,
+        username,
+        text: transcriptionText
+      });
     } else {
-      console.error(`Transcription failed for file ${filePath}`);
+      logger(`Transcription failed for file ${filePath}`, 'error');
     }
   }
 
-  // Save the combined transcription in the session directory
+  // Sort transcriptions by timestamp to maintain the chronological order
+  transcriptions.sort((a, b) => a.timestamp - b.timestamp);
+
+  // Create a combined transcription with formatted timestamps
+  const combinedTranscription = transcriptions.map(entry => `${entry.timestamp.toLocaleString()} - ${entry.username}: ${entry.text}`).join('\n\n');
+
+  // Save individual transcription files in the session directory
   const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
   fs.writeFileSync(finalFilePath, combinedTranscription);
 
-  console.log(`Full transcription saved as ${finalFilePath}`);
+  logger(`Full transcription saved as ${finalFilePath}`, 'info');
   const summary = await generateSummary(combinedTranscription);
   return { summary, transcriptionFile: finalFilePath };
 }
 
-async function transcribeFile(filePath, username) {
+// Transcribes a single audio file and returns the transcription text
+async function transcribeFile(filePath, username, startTime) {
   if (!fs.existsSync(filePath)) {
-    console.error(`Audio file not found for transcription: ${filePath}`);
+    logger(`Audio file not found for transcription: ${filePath}`, 'error');
     return null;
   }
 
@@ -73,20 +85,21 @@ async function transcribeFile(filePath, username) {
 
     const data = await response.json();
     if (data.text) {
-      const timestamp = new Date().toLocaleString();
-      const transcriptionText = `${timestamp} - ${username}: ${data.text}`;
-      console.log(`Transcription completed for ${username}: ${transcriptionText}`);
+      const transcriptionText = data.text;
+      logger(`Transcription completed for ${username}`, 'info');
       return transcriptionText;
     } else {
-      console.error('Transcription failed:', data.error);
+      logger('Transcription failed:', 'error');
       return null;
     }
   } catch (error) {
-    console.error('Failed to transcribe audio:', error);
+    logger('Failed to transcribe audio:', 'error');
     return null;
   }
 }
 
+
+// Generates a summary from the combined transcription text
 export async function generateSummary(transcriptionText) {
   const prompt = `
     Here is a conversation transcript. Please summarize the conversation, ignoring any background noise, music, or non-speech sounds. Focus only on the spoken content and relevant dialog.
@@ -115,14 +128,14 @@ export async function generateSummary(transcriptionText) {
     const data = await response.json();
     if (data.choices && data.choices[0]?.message?.content) {
       const summary = data.choices[0].message.content.trim();
-      console.log(`Summary generated: ${summary}`);
+      logger(`Summary generated: ${summary}`, 'info');
       return summary;
     } else {
-      console.error('No summary available.');
+      logger('No summary available.', 'error');
       return 'No summary available';
     }
   } catch (error) {
-    console.error('Failed to generate summary:', error);
+    logger('Failed to generate summary:', 'error');
     return 'Summary generation failed';
   }
 }

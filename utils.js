@@ -1,53 +1,67 @@
 import 'dotenv/config';
 import fs from 'fs';
+import path from 'path'; // Add missing import for path
+import { fileURLToPath } from 'url';
+import { logger } from './utils/logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const recordingsDir = path.join(__dirname, '../recordings'); // Assuming __dirname is defined elsewhere or replace with correct path
 
 export async function DiscordRequest(endpoint, options) {
-  // append endpoint to root API URL
   const url = 'https://discord.com/api/v10/' + endpoint;
-  // Stringify payloads
+
   if (options.body) options.body = JSON.stringify(options.body);
-  // Use fetch to make requests
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-      'Content-Type': 'application/json; charset=UTF-8',
-      'User-Agent': 'DND Scrying NoteTaker (https://github.com/thekannen/dnd-scrying-notetaker.git, 1.0.0)',
-    },
-    ...options
-  });
-  // throw API errors
-  if (!res.ok) {
-    const data = await res.json();
-    console.log(res.status);
-    throw new Error(JSON.stringify(data));
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'User-Agent': 'DND Scrying NoteTaker (https://github.com/thekannen/dnd-scrying-notetaker.git, 1.0.0)',
+      },
+      ...options,
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      logger(`API request failed with status ${res.status}: ${JSON.stringify(data)}`, 'error');
+      throw new Error(JSON.stringify(data));
+    }
+
+    logger(`API request successful: ${endpoint}`, 'info');
+    return res;
+  } catch (error) {
+    logger(`Error during API request: ${error.message}`, 'error');
+    throw error;
   }
-  // return original response
-  return res;
 }
 
 // Registers global commands for the bot.
 export async function InstallGlobalCommands(appId, commands) {
-    const endpoint = `applications/${appId}/commands`;
-  
-    try {
-      await DiscordRequest(endpoint, { method: 'PUT', body: commands });
-      console.log('Commands successfully registered.');
-    } catch (err) {
-      console.error('Failed to register commands:', err);
-    }
-  }
-  
-  // Generates a timestamp in ISO UTC format.
-  export function generateTimestamp() {
-    return new Date().toISOString();
-  }
+  const endpoint = `applications/${appId}/commands`;
 
-  // Deletes files matching a specific pattern from the current directory.
-  export function cleanFiles(pattern) {
-    const files = fs.readdirSync('./').filter(file => file.includes(pattern));
-    files.forEach(file => fs.unlinkSync(file));
-    console.log(`Deleted files with pattern "${pattern}":`, files);
+  try {
+    await DiscordRequest(endpoint, { method: 'PUT', body: commands });
+    logger('Commands successfully registered.', 'info');
+  } catch (err) {
+    logger(`Failed to register commands: ${err.message}`, 'error');
   }
+}
+
+// Generates a timestamp in ISO UTC format.
+export function generateTimestamp() {
+  return new Date().toISOString();
+}
+
+// Deletes files matching a specific pattern from the current directory.
+export function cleanFiles(pattern) {
+  const files = fs.readdirSync('./').filter(file => file.includes(pattern));
+  files.forEach(file => {
+    fs.unlinkSync(file);
+    logger(`Deleted file: ${file}`, 'info');
+  });
+  logger(`Deleted files with pattern "${pattern}": ${files}`, 'info');
+}
 
 // Validates if the session name is unique and meets length requirements.
 export function validateSessionName(sessionName) {
@@ -67,4 +81,5 @@ export function validateSessionName(sessionName) {
 export function createSessionDirectory(sessionName) {
   const sessionFolder = path.join(recordingsDir, sessionName);
   fs.mkdirSync(sessionFolder, { recursive: true });
+  logger(`Created directory for session: ${sessionName}`, 'info');
 }
