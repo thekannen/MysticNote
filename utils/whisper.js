@@ -59,8 +59,19 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     }
   }
 
-  // Ensure segments are sorted by start time
-  transcriptions.sort((a, b) => a.start - b.start);
+  // Log each segment's timestamp and username for debugging purposes
+  transcriptions.forEach(entry => {
+    logger(`Segment: ${entry.username}, Start: ${entry.start}, End: ${entry.end}, Text: ${entry.text}`, 'debug');
+  });
+
+  // Ensure segments are sorted by start time, with secondary sorting by username if times are identical
+  transcriptions.sort((a, b) => {
+    if (a.start - b.start !== 0) {
+      return a.start - b.start;
+    }
+    // Secondary sort by username to maintain order when timestamps are very close
+    return a.username.localeCompare(b.username);
+  });
 
   // Format the transcription into a readable log with server-local timestamps
   const combinedTranscription = transcriptions.map(entry => {
