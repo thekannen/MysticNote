@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const transcriptsDir = path.join(__dirname, '../transcripts');
 
 // Date formatter for consistent server-local time
 const localDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -29,7 +30,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
   logger(`Transcribing session files from folder: ${sessionFolderPath}`, 'info');
 
-  const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
+  const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
   if (!fs.existsSync(sessionTranscriptsDir)) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
   }
@@ -58,7 +59,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     }
   }
 
-  // Sort all segments by their actual start time
+  // Ensure segments are sorted by start time
   transcriptions.sort((a, b) => a.start - b.start);
 
   // Format the transcription into a readable log with server-local timestamps
