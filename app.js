@@ -5,7 +5,9 @@ import { joinVoiceChannelHandler } from './commands/gaze.js';
 import { leaveVoiceChannelHandler } from './commands/leave.js';
 import { transcribeAudioHandler } from './commands/begin_scrying.js';
 import { stopRecordingAndTranscribe } from './commands/end_scrying.js';
+import { consultTheTextsHandler } from './commands/consult_texts.js';
 import { revealSummary, retrieveFullTranscription } from './commands/summary.js';
+import { deleteSessionHandler, purgeHandler } from './commands/delete_purge.js';
 
 // Initialize Discord client with required intents for voice and guild interactions
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -33,11 +35,20 @@ client.on('interactionCreate', async (interaction) => {
       case 'end_scrying':
         await stopRecordingAndTranscribe(interaction);
         break;
+      case 'consult_the_texts':
+        await consultTheTextsHandler(interaction);
+        break;
       case 'reveal_summary':
         await revealSummary(interaction);
         break;
       case 'complete_vision':
         await retrieveFullTranscription(interaction);
+        break;
+      case 'delete_session':
+        await deleteSessionHandler(interaction);
+        break;
+      case 'purge':
+        await purgeHandler(interaction);
         break;
       default:
         await interaction.reply({ content: 'Unknown command.', ephemeral: true });
