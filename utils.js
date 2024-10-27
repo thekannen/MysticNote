@@ -51,8 +51,8 @@ export async function InstallGlobalCommands(appId, commands) {
 
 // Validates if the session name is unique and meets length requirements.
 export function validateSessionName(sessionName) {
-  if (sessionName.length > 20) {
-    return 'Session name must be no more than 20 characters.';
+  if (sessionName.length > 50) {
+    return 'Session name must be no more than 50 characters.';
   }
 
   const sessionFolder = path.join(recordingsDir, sessionName);

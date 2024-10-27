@@ -3,7 +3,6 @@ import fs from 'fs';
 import prism from 'prism-media';
 import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
-import { generateTimestamp } from '../utils.js';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +11,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 let connection = null; // Stores the current voice connection
 let ffmpegProcesses = {}; // Stores ffmpeg processes for each user
 let activeUsers = new Set(); // Tracks users actively being recorded
-let sessionFiles = []; // Stores session recording files
+let currentSessionName = null;
+let isScryingSessionActive = false;
 
 // Set the active voice connection
 export function setConnection(conn) {
@@ -26,6 +26,20 @@ export function getActiveConnection(guildId) {
     return connection;
   }
   return null; // No active connection for the specified guild
+}
+
+// Clear the connection when leaving the channel
+export function clearConnection() {
+  connection = null;
+  console.log('Connection has been cleared.');
+}
+
+export function setSessionName(sessionName) {
+  currentSessionName = sessionName;
+}
+
+export function getSessionName() {
+  return currentSessionName;
 }
 
 // Start recording for a user
@@ -43,22 +57,29 @@ export async function startRecording(conn, userId, username) {
 
   await stopRecording(userId); // Stop existing recording for the user, if any
 
-  // Create the directory for recordings if it does not exist
-  const recordingsDir = path.join(__dirname, '../recordings');
-  if (!fs.existsSync(recordingsDir)) fs.mkdirSync(recordingsDir);
-
-  const timestamp = generateTimestamp().replace(/[:.]/g, '-');
-  const filePath = path.join(recordingsDir, `audio_${username}_${userId}_${timestamp}.wav`);
+  // Create the file directory if it does not exist
+  if (!currentSessionName) {
+    console.error("No active session found. Cannot start recording.");
+    return;
+  }
+  
+  const sessionDir = path.join(__dirname, '../recordings', currentSessionName);
+  if (!fs.existsSync(sessionDir)) {
+    fs.mkdirSync(sessionDir, { recursive: true });
+  }
 
   // Prepare streams for recording
   const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
+
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
     // Spawn ffmpeg process for recording PCM stream to a file
     ffmpegProcesses[userId] = spawn('ffmpeg', [
-      '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
+      '-y','-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
     ]);
 
     pcmStream.pipe(ffmpegProcesses[userId].stdin);
@@ -66,11 +87,18 @@ export async function startRecording(conn, userId, username) {
     // Handle recording completion
     ffmpegProcesses[userId].on('close', () => {
       console.log(`Recording finished for ${username}, saved as ${filePath}`);
-      sessionFiles.push(filePath); // Add the recording to session files
       activeUsers.delete(userId); // Remove the user from active recording list
     });
 
     activeUsers.add(userId); // Add user to active recording list
+
+    pcmStream.on('end', () => {
+      console.log(`PCM stream ended for user ${userId}`);
+    });
+    
+    pcmStream.on('finish', () => {
+      console.log(`PCM stream finished for user ${userId}`);
+    });    
 
     // Handle PCM stream errors
     pcmStream.on('error', (error) => {
@@ -81,24 +109,58 @@ export async function startRecording(conn, userId, username) {
   }
 }
 
-// Stop recording for a user
-export async function stopRecording(userId) {
+// Stop recording for a user or all users
+export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
-    if (!ffmpegProcesses[userId]) {
-      console.log(`No active recording found for userId: ${userId}`);
-      resolve(null);
-      return;
-    }
+    if (userId) {
+      // Stop a specific user's recording
+      if (!ffmpegProcesses[userId]) {
+        console.log(`No active recording found for userId: ${userId}`);
+        resolve(null);
+        return;
+      }
 
-    ffmpegProcesses[userId].stdin.end(); // End the ffmpeg input stream
-    ffmpegProcesses[userId].on('close', () => {
-      const filePath = ffmpegProcesses[userId].spawnargs[ffmpegProcesses[userId].spawnargs.length - 1];
-      console.log(`Stopped recording for userId: ${userId}, saved as ${filePath}`);
-      delete ffmpegProcesses[userId]; // Remove the process entry
-      activeUsers.delete(userId); // Remove user from active list
-      sessionFiles.push(filePath); // Track the recording in session files
-      resolve({ filePath, userId });
-    });
+      // Adding a small delay before ending the stream
+      setTimeout(() => {
+        if (ffmpegProcesses[userId] && ffmpegProcesses[userId].stdin) {
+          ffmpegProcesses[userId].stdin.end();
+          ffmpegProcesses[userId].on('close', () => {
+            const filePath = ffmpegProcesses[userId].spawnargs[ffmpegProcesses[userId].spawnargs.length - 1];
+            console.log(`Stopped recording for userId: ${userId}, saved as ${filePath}`);
+            delete ffmpegProcesses[userId];
+            activeUsers.delete(userId);
+            resolve({ filePath, userId });
+          });
+        } else {
+          console.log(`FFmpeg process for userId: ${userId} is no longer active.`);
+          resolve(null);
+        }
+      }, 500); // Adjust delay time as necessary (e.g., 500 ms)
+    } else {
+      // Stop all active recordings
+      const stopPromises = Object.keys(ffmpegProcesses).map(async (activeUserId) => {
+        return new Promise((stopResolve) => {
+          if (ffmpegProcesses[activeUserId] && ffmpegProcesses[activeUserId].stdin) {
+            ffmpegProcesses[activeUserId].stdin.end();
+            ffmpegProcesses[activeUserId].on('close', () => {
+              const filePath = ffmpegProcesses[activeUserId].spawnargs[ffmpegProcesses[activeUserId].spawnargs.length - 1];
+              console.log(`Stopped recording for userId: ${activeUserId}, saved as ${filePath}`);
+              delete ffmpegProcesses[activeUserId];
+              activeUsers.delete(activeUserId);
+              stopResolve({ filePath, activeUserId });
+            });
+          } else {
+            console.log(`FFmpeg process for userId: ${activeUserId} is no longer active.`);
+            stopResolve(null);
+          }
+        });
+      });
+
+      Promise.all(stopPromises).then((results) => {
+        console.log('All active recordings have been stopped.');
+        resolve(results);
+      });
+    }
   });
 }
 
@@ -116,11 +178,11 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const username = newState.member.user.username;
 
   // User joined the voice channel
-  if (!oldState.channelId && newState.channelId) {
+  if (!oldState.channelId && newState.channelId && isScryingSessionActive) {
     startRecording(connection, userId, username);
   }
   // User left the voice channel
-  else if (oldState.channelId && !newState.channelId) {
+  else if (oldState.channelId && !newState.channelId && isScryingSessionActive) {
     await stopRecording(userId);
   }
 });
@@ -128,12 +190,11 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 // Log in to Discord with the bot token
 client.login(process.env.BOT_TOKEN);
 
-// Clear session files for a new scrying session
-export function clearSessionFiles() {
-  sessionFiles = []; // Reset session file tracking
+// Manage session state
+export function setScryingSessionActive(isActive) {
+  isScryingSessionActive = isActive;
 }
 
-// Get the current session files
-export function getSessionFiles() {
-  return [...sessionFiles]; // Return a copy of session files
+export function isScryingSessionOngoing() {
+  return isScryingSessionActive;
 }

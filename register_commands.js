@@ -12,7 +12,7 @@ const BEGIN_SCRYING_COMMAND = {
     options: [
       {
         name: 'session',
-        description: 'The name of the session (up to 20 characters, must be unique)',
+        description: 'The name of the session (up to 50 characters, must be unique)',
         type: 3, // type 3 is for STRING input
         required: true,
       }
