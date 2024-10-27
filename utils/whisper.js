@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import FormData from 'form-data';
+import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { generateTimestamp } from '../utils.js';
@@ -16,7 +15,6 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     return { summary: null, transcriptionFile: null };
   }
 
-  // Get all .wav files in the session folder
   const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
   logger(`Transcribing session files from folder: ${sessionFolderPath}`, 'info');
 
@@ -25,7 +23,6 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
   }
 
-  // Collect transcriptions with timestamps
   let transcriptions = [];
 
   for (const file of sessionFiles) {
@@ -35,25 +32,31 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
     logger(`Transcribing ${filePath} for ${username}`, 'info');
 
-    const transcriptionText = await transcribeFile(filePath, username, fileCreationTime);
-    if (transcriptionText) {
-      transcriptions.push({
-        timestamp: fileCreationTime,
+    // Run the Python Whisper script and retrieve segments with relative timestamps
+    const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
+    if (transcriptionSegments) {
+      // Adjust segment timestamps based on file creation time
+      transcriptions.push(...transcriptionSegments.map(segment => ({
+        start: new Date(fileCreationTime.getTime() + segment.start * 1000),
+        end: new Date(fileCreationTime.getTime() + segment.end * 1000),
         username,
-        text: transcriptionText
-      });
+        text: segment.text
+      })));
     } else {
       logger(`Transcription failed for file ${filePath}`, 'error');
     }
   }
 
-  // Sort transcriptions by timestamp to maintain the chronological order
-  transcriptions.sort((a, b) => a.timestamp - b.timestamp);
+  // Sort all segments by their actual start time
+  transcriptions.sort((a, b) => a.start - b.start);
 
-  // Create a combined transcription with formatted timestamps
-  const combinedTranscription = transcriptions.map(entry => `${entry.timestamp.toLocaleString()} - ${entry.username}: ${entry.text}`).join('\n\n');
+  // Format the transcription into a readable log with timestamps
+  const combinedTranscription = transcriptions.map(entry => {
+    const start = entry.start.toLocaleString();
+    const end = entry.end.toLocaleString();
+    return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
+  }).join('\n\n');
 
-  // Save individual transcription files in the session directory
   const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
   fs.writeFileSync(finalFilePath, combinedTranscription);
 
@@ -62,42 +65,32 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   return { summary, transcriptionFile: finalFilePath };
 }
 
-// Transcribes a single audio file and returns the transcription text
-async function transcribeFile(filePath, username, startTime) {
-  if (!fs.existsSync(filePath)) {
-    logger(`Audio file not found for transcription: ${filePath}`, 'error');
-    return null;
-  }
+// Runs the Python Whisper script to transcribe an audio file
+async function transcribeFileWithWhisper(filePath, username) {
+  const pythonScript = path.join(__dirname, 'whisper_transcribe.py');
 
-  const formData = new FormData();
-  formData.append('file', fs.createReadStream(filePath));
-  formData.append('model', 'whisper-1');
+  return new Promise((resolve, reject) => {
+    execFile('python3', [pythonScript, filePath], (error, stdout, stderr) => {
+      if (error) {
+        logger(`Error during transcription for ${username}: ${error.message}`, 'error');
+        reject(error);
+        return;
+      }
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        ...formData.getHeaders(),
-      },
-      body: formData,
+      if (stderr) {
+        logger(`Stderr during transcription for ${username}: ${stderr}`, 'warn');
+      }
+
+      try {
+        const segments = JSON.parse(stdout);
+        resolve(segments);
+      } catch (parseError) {
+        logger(`Failed to parse transcription output for ${username}: ${parseError.message}`, 'error');
+        reject(parseError);
+      }
     });
-
-    const data = await response.json();
-    if (data.text) {
-      const transcriptionText = data.text;
-      logger(`Transcription completed for ${username}`, 'info');
-      return transcriptionText;
-    } else {
-      logger('Transcription failed:', 'error');
-      return null;
-    }
-  } catch (error) {
-    logger('Failed to transcribe audio:', 'error');
-    return null;
-  }
+  });
 }
-
 
 // Generates a summary from the combined transcription text
 export async function generateSummary(transcriptionText) {
