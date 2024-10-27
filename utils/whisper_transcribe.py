@@ -9,27 +9,45 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 def transcribe_with_timestamps(file_path):
+    # Load the Whisper model
     model = whisper.load_model("medium")  # Use "base", "small", "medium", or "large" based on resources
-    result = model.transcribe(file_path)
+    
+    # Transcribe with custom parameters for finer granularity
+    result = model.transcribe(
+        file_path, 
+        word_timestamps=True,         # Enables word-level timestamps
+        condition_on_previous_text=False, # Prevents reliance on previous segments, useful for more granular segmentation
+        initial_prompt=None            # Avoids using a specific initial prompt
+    )
 
-    # Collect segments with timestamps (for direct return to calling code)
+    # Collect segments with timestamps
     segments = []
     for segment in result["segments"]:
-        segments.append({
-            "start": segment["start"],
-            "end": segment["end"],
-            "text": segment["text"]
-        })
+        # If word-level timestamps are enabled, break down segments by words
+        if "words" in segment:
+            for word_info in segment["words"]:
+                segments.append({
+                    "start": word_info["start"],
+                    "end": word_info["end"],
+                    "text": word_info["text"]
+                })
+        else:
+            # Fallback to the whole segment if word-level timestamps are not provided
+            segments.append({
+                "start": segment["start"],
+                "end": segment["end"],
+                "text": segment["text"]
+            })
 
-    return result, segments
+    return segments
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python whisper_transcribe.py <path_to_audio_file>", file=sys.stderr)
+        print("Usage: python whisper_transcribe.py <path_to_audio_file>")
         sys.exit(1)
 
     file_path = sys.argv[1]
-    result, segments = transcribe_with_timestamps(file_path)
+    segments = transcribe_with_timestamps(file_path)
 
-    # Print only the simplified segments JSON to stdout for the bot to process
+    # Output the segments JSON to stdout for further processing
     print(json.dumps(segments))

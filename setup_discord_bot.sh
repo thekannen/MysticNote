@@ -25,7 +25,12 @@ cd dnd-scrying-notetaker
 
 # Install project-specific npm dependencies
 echo "Installing npm dependencies..."
-npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
+npm install discord.js @discordjs/voice prism-media form-data node-fetch @discordjs/opus ffmpeg-static dotenv date-fns
+
+# Install Whisper and its dependencies
+echo "Installing Whisper and PyTorch dependencies..."
+pip3 install torch  # Ensure you install the correct version for your environment from https://pytorch.org/get-started/locally/
+pip3 install git+https://github.com/openai/whisper.git
 
 # Add environment variable setup instructions
 echo "Setting up environment variables..."
@@ -33,12 +38,11 @@ cat <<EOF > .env
 APP_ID=<YOUR_APP_ID>
 DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
 PUBLIC_KEY=<YOUR_PUBLIC_KEY>
-OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
 EOF
-echo "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, <YOUR_PUBLIC_KEY> and <YOUR_OPENAI_API_KEY> in the .env file."
+echo "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, and <YOUR_PUBLIC_KEY> in the .env file."
 
 # Final message
-echo "Setup complete! Your Discord bot is ready to be configured. Run it with 'node app.js' from the dnd-scrying-notetaker directory."
+echo "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node app.js' from the dnd-scrying-notetaker directory."
 
 # Ensure script is executable
 chmod +x setup_discord_bot.sh
