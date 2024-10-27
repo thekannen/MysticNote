@@ -79,18 +79,32 @@ If you prefer to install manually:
    ```bash
    npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
 
-7. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+7. Install Whisper and Python Dependencies:
+   - Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
+
+   ```bash
+   pip3 install torch
+
+8.  Install Whisper:
+   ```bash
+   pip3 install git+https://github.com/openai/whisper.git
+
+9. Verify Whisper Installation:
+   ```bash
+   python3 -c "import whisper; print(whisper.load_model('base'))"
+
+10. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
    ```plaintext
    APP_ID=<YOUR_APP_ID>
    DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
    PUBLIC_KEY=<YOUR_PUBLIC_KEY>
    OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
    
-8. Register the commands:
+11. Register the commands:
    ```bash
    node register_commands.js
 
-9. Start the bot:
+12. Start the bot:
    ```bash
    node app.js
 
@@ -102,7 +116,7 @@ If you prefer to install manually:
 
 2. Start the bot with pm2:
    ```bash
-   pm2 start app.js --name "dnd-scrying-bot"
+   pm2 start /home/<user>/dnd-scrying-notetaker/app.js --name "dnd-scrying-bot"
 
 3. Save the pm2 process list and startup:
    ```bash

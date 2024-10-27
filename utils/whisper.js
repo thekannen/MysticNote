@@ -6,6 +6,18 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const transcriptsDir = path.join(__dirname, '../transcripts');
+
+// Date formatter for consistent server-local time
+const localDateFormatter = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
 
 // Transcribes all audio files in a session folder and saves the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
@@ -18,7 +30,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
   logger(`Transcribing session files from folder: ${sessionFolderPath}`, 'info');
 
-  const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
+  const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
   if (!fs.existsSync(sessionTranscriptsDir)) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
   }
@@ -47,13 +59,29 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     }
   }
 
-  // Sort all segments by their actual start time
-  transcriptions.sort((a, b) => a.start - b.start);
+  // Log each segment's timestamp and username for debugging purposes
+  transcriptions.forEach(entry => {
+    logger(`Segment: ${entry.username}, Start: ${entry.start}, End: ${entry.end}, Text: ${entry.text}`, 'debug');
+  });
 
-  // Format the transcription into a readable log with timestamps
+  // Ensure segments are sorted by start time, then end time, and finally by username if necessary
+  transcriptions.sort((a, b) => {
+    if (a.start - b.start !== 0) {
+      return a.start - b.start;
+    }
+    // Secondary sort by end time to maintain order when start times are very close
+    if (a.end - b.end !== 0) {
+      return a.end - b.end;
+    }
+    // Final sort by username to maintain order when both start and end times are identical
+    return a.username.localeCompare(b.username);
+  });
+
+
+  // Format the transcription into a readable log with server-local timestamps
   const combinedTranscription = transcriptions.map(entry => {
-    const start = entry.start.toLocaleString();
-    const end = entry.end.toLocaleString();
+    const start = localDateFormatter.format(entry.start);
+    const end = localDateFormatter.format(entry.end);
     return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
   }).join('\n\n');
 
@@ -123,23 +151,34 @@ export async function generateSummary(transcriptionText, sessionName) {
       const summary = data.choices[0].message.content.trim();
       logger(`Summary generated: ${summary}`, 'info');
 
-      // Define the path for the summary file
-      const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
-      if (!fs.existsSync(sessionTranscriptsDir)) {
-        fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+      try {
+        // Define the path for the summary file with server-local timestamp
+        const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
+        logger(`Checking if directory exists: ${sessionTranscriptsDir}`, 'debug');
+        if (!fs.existsSync(sessionTranscriptsDir)) {
+          logger(`Directory does not exist, creating directory: ${sessionTranscriptsDir}`, 'debug');
+          fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+        }
+
+        const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
+        const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
+        
+        logger(`Attempting to write summary to file: ${summaryFilePath}`, 'debug');
+        fs.writeFileSync(summaryFilePath, summary);
+        logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
+
+        return summary;
+      } catch (fileError) {
+        logger(`Failed to save summary file: ${fileError.message}`, 'error');
+        return 'Failed to save summary to file.';
       }
 
-      const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
-      fs.writeFileSync(summaryFilePath, summary);
-      logger(`Summary saved to ${summaryFilePath}`, 'info');
-
-      return summary;
     } else {
       logger('No summary available.', 'error');
       return 'No summary available';
     }
-  } catch (error) {
-    logger('Failed to generate summary:', 'error');
+  } catch (apiError) {
+    logger(`Failed to generate summary: ${apiError.message}`, 'error');
     return 'Summary generation failed';
   }
 }
