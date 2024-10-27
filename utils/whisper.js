@@ -6,27 +6,44 @@ import { generateTimestamp } from '../utils.js';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const transcriptsDir = path.join(__dirname, '../transcripts');
-if (!fs.existsSync(transcriptsDir)) fs.mkdirSync(transcriptsDir);
 
-export async function transcribeAndSaveSessionFiles(sessionFiles) {
-  console.log(`Transcribing session files: ${sessionFiles.join(', ')}`);
+export async function transcribeAndSaveSessionFolder(sessionName) {
+  const sessionFolderPath = path.join(__dirname, '../recordings', sessionName);
+  if (!fs.existsSync(sessionFolderPath)) {
+    console.error(`Session folder not found: ${sessionFolderPath}`);
+    return { summary: null, transcriptionFile: null };
+  }
+
+  // Get all .wav files in the session folder
+  const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
+  console.log(`Transcribing session files from folder: ${sessionFolderPath}`);
+
   let combinedTranscription = '';
+  const sessionTranscriptsDir = path.join(__dirname, '../transcripts', sessionName);
+  if (!fs.existsSync(sessionTranscriptsDir)) {
+    fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+  }
 
-  for (const filePath of sessionFiles) {
-    const username = path.basename(filePath).split('_')[1];
+  for (const file of sessionFiles) {
+    const filePath = path.join(sessionFolderPath, file);
+    const username = path.basename(file).split('_')[1];
     console.log(`Transcribing ${filePath} for ${username}`);
 
     const transcriptionText = await transcribeFile(filePath, username);
     if (transcriptionText) {
       combinedTranscription += `${transcriptionText}\n\n`;
+
+      // Save individual transcription files in the session directory
+      const timestamp = generateTimestamp().replace(/[:.]/g, '-');
+      const individualFilePath = path.join(sessionTranscriptsDir, `transcription_${username}_${timestamp}.txt`);
+      fs.writeFileSync(individualFilePath, transcriptionText);
     } else {
       console.error(`Transcription failed for file ${filePath}`);
     }
   }
 
-  const timestamp = generateTimestamp().replace(/[:.]/g, '-');
-  const finalFilePath = path.join(transcriptsDir, `full_conversation_log_${timestamp}.txt`);
+  // Save the combined transcription in the session directory
+  const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
   fs.writeFileSync(finalFilePath, combinedTranscription);
 
   console.log(`Full transcription saved as ${finalFilePath}`);
