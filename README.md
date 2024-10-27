@@ -10,6 +10,12 @@ This application was created with extensive guidance from OpenAI's ChatGPT to he
 ---
 
 ## Features
+## Disclaimer
+This application was created with extensive guidance from OpenAI's ChatGPT to help streamline the development process and refine functionality. Any issues or questions related to the code should be directed to the repository owner, as ChatGPT was used as a tool in the creation process and is not responsible for ongoing maintenance or support.
+
+---
+
+## Features
 
 - **Real-Time Voice Recording**: Joins a Discord voice channel and records multiple users.
 - **Automatic Transcription**: Uses OpenAI Whisper API to transcribe audio in real-time.
@@ -26,7 +32,11 @@ This application was created with extensive guidance from OpenAI's ChatGPT to he
 1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
 2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
 
+1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
+2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
+
 Ensure you have the following on your server:
+- **Ubuntu**
 - **Ubuntu**
 - **Node.js** (version 20 or higher)
 - **FFmpeg**: Required for audio processing
@@ -113,7 +123,7 @@ Each command offers a unique interaction with the bot, allowing for seamless int
 
 ## Support This Project
 
-If you enjoy using the DnD Scrying Notetaker Bot and would like to support its ongoing development, consider making a donation. Your support helps cover server and maintenance costs.
+If you enjoy using the DnD Scrying Notetaker Bot and would like to buy me a coffee, below is a donation link! Otherwise, enjoy!
 
 [Donate via PayPal](https://www.paypal.com/donate/?business=HDGMTT3QUAEJQ&no_recurring=1&currency_code=USD)
 
