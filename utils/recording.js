@@ -13,6 +13,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 let connection = null; // Stores the current voice connection
 let ffmpegProcesses = {}; // Stores ffmpeg processes for each user
 let activeUsers = new Set(); // Tracks users actively being recorded
+let scryingChannelId = null;
 let currentSessionName = null;
 let isScryingSessionActive = false;
 let inactivityTimeout = null; // Timer for session inactivity
@@ -61,26 +62,24 @@ function clearInactivityTimer() {
   }
 }
 
-// End the scrying session due to inactivity
-async function endScryingSession(interaction) {
+async function endScryingSession() {
   if (isScryingSessionActive) {
-    // Create a minimal mock interaction for backend processing
-    const mockInteraction = {
-      reply: async () => {}, // No-op for reply
-      editReply: async () => {}, // No-op for editReply
-      channel: interaction?.channel || { send: async () => {} } // Allows sending to channel if available
-    };
+    const channelId = getScryingChannelId();
+    const channel = client.channels.cache.get(channelId);
 
-    // Call the stop and transcribe helper with the mock interaction
-    await stopRecordingAndTranscribe(mockInteraction);
-
-    // Notify the channel that the session ended due to inactivity
-    if (interaction?.channel) {
-      await interaction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    if (!channel) {
+      logger(`Channel with ID ${channelId} not found. Unable to send inactivity notification.`, 'error');
+      return;
     }
 
+    // Call the stop and transcribe helper without relying on interaction
+    await stopRecordingAndTranscribe();
+
+    // Notify the channel that the session ended due to inactivity
+    await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+
     clearConnection();
-    setScryingSessionActive(false, interaction);
+    setScryingSessionActive(false);
     logger('Scrying session ended due to inactivity.', 'info');
   }
 }
@@ -233,13 +232,19 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 client.login(process.env.BOT_TOKEN);
 
-export function setScryingSessionActive(isActive, interaction) {
+export function setScryingSessionActive(isActive, channelId = null) {
   isScryingSessionActive = isActive;
+  scryingChannelId = channelId; // Store channelId for later use in notifications
+
   if (isActive) {
-    resetInactivityTimer(interaction);
+    resetInactivityTimer();
   } else {
     clearInactivityTimer();
   }
+}
+
+export function getScryingChannelId() {
+  return scryingChannelId;
 }
 
 export function isScryingSessionOngoing() {
