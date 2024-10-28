@@ -76,15 +76,8 @@ async function endScryingSession() {
     // Notify the channel that the session ended due to inactivity
     await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
 
-    // Minimal mock interaction for backend processing with no-op functions
-    const mockInteraction = {
-      reply: async () => {},        // No-op for reply
-      editReply: async () => {},    // No-op for editReply
-      channel                          // Provide the channel directly for stopRecordingAndTranscribe
-    };
-
     // Call the stop and transcribe helper with the mock interaction and channelId
-    await stopRecordingAndTranscribe(mockInteraction, channelId);
+    await stopRecordingAndTranscribe(null, channelId);
 
     // Clear connection and session state
     clearConnection();
