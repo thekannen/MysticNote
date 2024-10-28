@@ -1,11 +1,10 @@
 import { transcribeAndSaveSessionFolder } from '../utils/whisper.js';
 import { stopRecording, getSessionName, setSessionName, setScryingSessionActive } from '../utils/recording.js';
 import { logger } from '../utils/logger.js';
-import { Client } from 'discord.js';
 
-export async function stopRecordingAndTranscribe(interaction, channelId) {
-  // Determine whether to use interaction or channelId
-  const channel = interaction?.channel || Client.channels.cache.get(channelId);
+export async function stopRecordingAndTranscribe(interaction, channelExt) {
+  // Determine whether to use interaction or external channel
+  const channel = interaction?.channel || channelExt;
 
   if (!channel) {
     logger(`Channel not found. Unable to proceed with transcription.`, 'error');

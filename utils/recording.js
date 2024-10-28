@@ -77,7 +77,7 @@ async function endScryingSession() {
     await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
 
     // Call the stop and transcribe helper with the mock interaction and channelId
-    await stopRecordingAndTranscribe(null, channelId);
+    await stopRecordingAndTranscribe(null, channel);
 
     // Clear connection and session state
     clearConnection();
