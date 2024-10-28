@@ -10,50 +10,45 @@ import { stopRecordingAndTranscribe } from '../commands/end_scrying.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
-let connection = null; // Stores the current voice connection
-let ffmpegProcesses = {}; // Stores ffmpeg processes for each user
+let connection = null;
+let ffmpegProcesses = {}; // Tracks ffmpeg processes for each user
 let activeUsers = new Set(); // Tracks users actively being recorded
+let scryingChannelId = null;
 let currentSessionName = null;
 let isScryingSessionActive = false;
-let inactivityTimeout = null; // Timer for session inactivity
+let inactivityTimeout = null;
 
-const INACTIVITY_LIMIT = 300000; // 5 minutes in milliseconds
+const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Set the active voice connection
+// Sets the active voice connection
 export function setConnection(conn) {
   connection = conn;
   logger('Connection has been established and stored in recording.js', 'info');
   resetInactivityTimer(); // Reset timer when connection is established
 }
 
-// Get the active connection for the guild
+// Retrieves the active connection for a guild
 export function getActiveConnection(guildId) {
-  if (connection && connection.joinConfig.guildId === guildId) {
-    return connection;
-  }
-  return null; // No active connection for the specified guild
+  return connection?.joinConfig.guildId === guildId ? connection : null;
 }
 
-// Clear the connection when leaving the channel
+// Clears the connection when leaving the voice channel
 export function clearConnection() {
   connection = null;
   logger('Connection has been cleared.', 'info');
   clearInactivityTimer(); // Stop the timer when connection is cleared
 }
 
-// Initialize or reset the inactivity timer
-function resetInactivityTimer(interaction) {
-  if (inactivityTimeout) {
-    clearTimeout(inactivityTimeout);
-  }
-
+// Resets the inactivity timer based on audio activity
+function resetInactivityTimer() {
+  clearInactivityTimer();
   inactivityTimeout = setTimeout(() => {
     logger('No audio detected for 5 minutes. Ending scrying session due to inactivity.', 'info');
-    endScryingSession(interaction); // Pass interaction to notify the channel
+    endScryingSession(); // Ends the session if no audio activity within the limit
   }, INACTIVITY_LIMIT);
 }
 
-// Clear the inactivity timer
+// Clears the inactivity timer
 function clearInactivityTimer() {
   if (inactivityTimeout) {
     clearTimeout(inactivityTimeout);
@@ -61,44 +56,49 @@ function clearInactivityTimer() {
   }
 }
 
-// End the scrying session due to inactivity
-async function endScryingSession(interaction) {
+// Ends the scrying session due to inactivity
+async function endScryingSession() {
   if (isScryingSessionActive) {
-    // Stop recordings and transcribe any available audio
-    await stopRecordingAndTranscribe(interaction);
-    
-    // Notify the channel of inactivity
-    if (interaction && interaction.channel) {
-      await interaction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    const channel = client.channels.cache.get(getScryingChannelId());
+
+    if (!channel) {
+      logger(`Channel with ID ${scryingChannelId} not found. Unable to send inactivity notification.`, 'error');
+      return;
     }
 
+    await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    await stopRecordingAndTranscribe(null, channel);
+
+    // Clear connection and session state
     clearConnection();
     setScryingSessionActive(false);
     logger('Scrying session ended due to inactivity.', 'info');
   }
 }
 
+// Helper to get the active scrying channel ID
+export function getScryingChannelId() {
+  return scryingChannelId;
+}
+
+// Sets session name for recording
 export function setSessionName(sessionName) {
   currentSessionName = sessionName;
 }
 
+// Gets the current session name
 export function getSessionName() {
   return currentSessionName;
 }
 
-// Start recording for a user
+// Starts recording for a user and monitors audio activity
 export async function startRecording(conn, userId, username) {
-  if (!conn) {
-    logger("Connection is not established. Cannot start recording.", 'error');
+  if (!conn || !conn.receiver) {
+    logger("Connection is not established or lacks a valid receiver. Cannot start recording.", 'error');
     return;
   }
 
-  if (!conn.receiver) {
-    logger("Connection does not have a valid receiver. Cannot start recording.", 'error');
-    return;
-  }
-
-  await stopRecording(userId); // Stop existing recording for the user, if any
+  await stopRecording(userId); // Stops existing recording for the user if any
 
   if (!currentSessionName) {
     logger("No active session found. Cannot start recording.", 'error');
@@ -110,7 +110,6 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  // Prepare streams for recording
   const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
@@ -119,12 +118,13 @@ export async function startRecording(conn, userId, username) {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
-    // Spawn ffmpeg process for recording PCM stream to a file
     ffmpegProcesses[userId] = spawn('ffmpeg', [
       '-y', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
     ]);
 
     pcmStream.pipe(ffmpegProcesses[userId].stdin);
+
+    pcmStream.on('data', () => resetInactivityTimer()); // Reset timer on each audio packet
 
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
@@ -133,25 +133,12 @@ export async function startRecording(conn, userId, username) {
     });
 
     activeUsers.add(userId);
-    resetInactivityTimer(); // Reset inactivity timer whenever recording starts
-
-    pcmStream.on('end', () => {
-      logger(`PCM stream ended for user ${userId}`, 'info');
-    });
-
-    pcmStream.on('finish', () => {
-      logger(`PCM stream finished for user ${userId}`, 'info');
-    });
-
-    pcmStream.on('error', (error) => {
-      logger(`PCM stream error for ${username}: ${error}`, 'error');
-    });
   } catch (error) {
     logger(`Failed to start recording for user ${username}: ${error}`, 'error');
   }
 }
 
-// Stop recording for a user or all users
+// Stops recording for a specific user or all users
 export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
@@ -205,7 +192,7 @@ export async function stopRecording(userId = null) {
   });
 }
 
-// Event listener for users joining or leaving a voice channel
+// Discord event listener for voice channel updates
 client.on('voiceStateUpdate', async (oldState, newState) => {
   const voiceChannel = newState.channel || oldState.channel;
 
@@ -224,17 +211,17 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
+// Logs in to the Discord bot client
 client.login(process.env.BOT_TOKEN);
 
-export function setScryingSessionActive(isActive) {
+// Toggles the scrying session state, including inactivity timer
+export function setScryingSessionActive(isActive, channelId = null) {
   isScryingSessionActive = isActive;
-  if (isActive) {
-    resetInactivityTimer();
-  } else {
-    clearInactivityTimer();
-  }
+  scryingChannelId = channelId; // Store channelId for later use in notifications
+  isActive ? resetInactivityTimer() : clearInactivityTimer();
 }
 
+// Checks if the scrying session is ongoing
 export function isScryingSessionOngoing() {
   return isScryingSessionActive;
 }

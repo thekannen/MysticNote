@@ -66,7 +66,9 @@ export async function transcribeAudioHandler(interaction) {
 
     // Reply to indicate recording has started
     await interaction.editReply(`Scrying session "${sessionName}" has begun. Recording is in progress for all users in the channel.`);
-    setScryingSessionActive(true);
+  
+    // When setting up the scrying session, pass the channelId to setScryingSessionActive
+    setScryingSessionActive(true, interaction.channel.id);
 
   } catch (error) {
     logger(`Error during begin_scrying command: ${error.message}`, 'error');
