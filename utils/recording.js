@@ -43,14 +43,14 @@ export function clearConnection() {
 }
 
 // Initialize or reset the inactivity timer
-function resetInactivityTimer(interaction) {
+function resetInactivityTimer() {
   if (inactivityTimeout) {
     clearTimeout(inactivityTimeout);
   }
 
   inactivityTimeout = setTimeout(() => {
     logger('No audio detected for 5 minutes. Ending scrying session due to inactivity.', 'info');
-    endScryingSession(interaction); // Pass interaction to notify the channel
+    endScryingSession(); // Pass interaction to notify the channel
   }, INACTIVITY_LIMIT);
 }
 
@@ -63,7 +63,7 @@ function clearInactivityTimer() {
 }
 
 // End the scrying session due to inactivity
-async function endScryingSession(interaction) {
+async function endScryingSession() {
   if (isScryingSessionActive) {
     const channelId = getScryingChannelId();
     const channel = client.channels.cache.get(channelId);
@@ -73,19 +73,20 @@ async function endScryingSession(interaction) {
       return;
     }
 
-    // Create a minimal mock interaction for backend processing
-    const mockInteraction = {
-      reply: async () => {}, // No-op for reply
-      editReply: async () => {}, // No-op for editReply
-      channel: interaction?.channel || { send: async () => {} } // Allows sending to channel if available
-    };
-
-    // Call the stop and transcribe helper with the mock interaction
-    await stopRecordingAndTranscribe(mockInteraction);
-
     // Notify the channel that the session ended due to inactivity
     await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
 
+    // Minimal mock interaction for backend processing with no-op functions
+    const mockInteraction = {
+      reply: async () => {},        // No-op for reply
+      editReply: async () => {},    // No-op for editReply
+      channel                          // Provide the channel directly for stopRecordingAndTranscribe
+    };
+
+    // Call the stop and transcribe helper with the mock interaction and channelId
+    await stopRecordingAndTranscribe(mockInteraction, channelId);
+
+    // Clear connection and session state
     clearConnection();
     setScryingSessionActive(false);
     logger('Scrying session ended due to inactivity.', 'info');
@@ -101,7 +102,7 @@ export function getSessionName() {
 }
 
 // Start recording for a user
-export async function startRecording(conn, userId, username, interaction) {
+export async function startRecording(conn, userId, username) {
   if (!conn) {
     logger("Connection is not established. Cannot start recording.", 'error');
     return;
@@ -112,7 +113,7 @@ export async function startRecording(conn, userId, username, interaction) {
     return;
   }
 
-  await stopRecording(userId, interaction); // Stop existing recording for the user, if any
+  await stopRecording(userId); // Stop existing recording for the user, if any
 
   if (!currentSessionName) {
     logger("No active session found. Cannot start recording.", 'error');
@@ -143,11 +144,11 @@ export async function startRecording(conn, userId, username, interaction) {
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
       activeUsers.delete(userId);
-      resetInactivityTimer(interaction); // Reset inactivity timer on audio activity
+      resetInactivityTimer(); // Reset inactivity timer on audio activity
     });
 
     activeUsers.add(userId);
-    resetInactivityTimer(interaction); // Reset inactivity timer whenever recording starts
+    resetInactivityTimer(); // Reset inactivity timer whenever recording starts
 
     pcmStream.on('end', () => {
       logger(`PCM stream ended for user ${userId}`, 'info');
@@ -166,7 +167,7 @@ export async function startRecording(conn, userId, username, interaction) {
 }
 
 // Stop recording for a user or all users
-export async function stopRecording(userId = null, interaction) {
+export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
       if (!ffmpegProcesses[userId]) {
@@ -234,7 +235,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if (!oldState.channelId && newState.channelId && isScryingSessionActive) {
     startRecording(connection, userId, username);
   } else if (oldState.channelId && !newState.channelId && isScryingSessionActive) {
-    await stopRecording(userId, interaction);
+    await stopRecording(userId);
   }
 });
 
