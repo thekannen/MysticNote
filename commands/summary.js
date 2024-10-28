@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { generateSummary } from '../utils/whisper.js';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 
