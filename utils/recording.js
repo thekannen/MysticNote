@@ -17,7 +17,7 @@ let currentSessionName = null;
 let isScryingSessionActive = false;
 let inactivityTimeout = null; // Timer for session inactivity
 
-const INACTIVITY_LIMIT = 300000; // 5 minutes in milliseconds
+const INACTIVITY_LIMIT = 3000; // 5 minutes in milliseconds
 
 // Set the active voice connection
 export function setConnection(conn) {
@@ -64,12 +64,19 @@ function clearInactivityTimer() {
 // End the scrying session due to inactivity
 async function endScryingSession(interaction) {
   if (isScryingSessionActive) {
-    // Stop recordings and transcribe any available audio
-    await stopRecordingAndTranscribe(interaction);
-    
-    // Notify the channel of inactivity
-    if (interaction && interaction.channel) {
-      await interaction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    // Create a mock interaction if none is provided
+    const fakeInteraction = interaction || {
+      reply: async (message) => logger(`[MOCK INTERACTION] ${message.content || message}`, 'info'),
+      editReply: async (message) => logger(`[MOCK EDIT] ${message}`, 'info'),
+      channel: interaction?.channel || { send: (msg) => logger(`[MOCK CHANNEL SEND] ${msg}`, 'info') }
+    };
+
+    // Stop recordings and transcribe any available audio using the (real or fake) interaction
+    await stopRecordingAndTranscribe(fakeInteraction);
+
+    // Notify the channel of inactivity (using the mock interaction's channel if interaction was undefined)
+    if (fakeInteraction.channel) {
+      await fakeInteraction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
     }
 
     clearConnection();
