@@ -32,18 +32,29 @@ Ensure you have the following on your server:
 - **FFmpeg**: Required for audio processing
 - **Git**
 
+### Server Recommendations
+Your server resources will vary depending on the Whisper model you choose and how many recordings you want to process/keep.
+These are just general recommendations.
+
+| OS | CPU Threads | RAM | Storage |
+| --- | --- | --- | --- |
+| Linux Ubuntu 24 LTS | 2-4 | 4-8 | 20-50Gb|
+| Windows TBD |
+
 ### Quick Install (via Bash Script)
 
 1. Clone the repository and install dependencies by running the following command:
    ```bash
    bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup_discord_bot.sh)
+   ```
 
-### Manual Installation
+### Manual Installation ( Ubuntu )
 If you prefer to install manually:
 1. Install server prerequisites:
    ```bash
    sudo apt update
    sudo apt install -y build-essential ffmpeg python3 python3-pip git
+   ```
 
 2. Clone the Repository: 
    ```bash
@@ -54,52 +65,57 @@ If you prefer to install manually:
    ```bash
    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
    sudo apt install -y nodejs
+   ```
 
 4. Verify Node.js and npm installation:
    ```bash
    node -v
    npm -v
+   ```
 
 5. Install FFmpeg and other dependencies:
    ```bash
    sudo apt update
    sudo apt install -y build-essential ffmpeg python3 python3-pip git
+   ```
 
 6. Install Node.js Dependencies:
    ```bash
    npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
+   ```
 
 7. Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
    ```bash
    pip3 install torch
-
-8.  Install Whisper:
+   ```
+   
+8. Install Whisper:
    ```bash
    pip3 install git+https://github.com/openai/whisper.git
    ```
 
-10. Verify Whisper Installation:
+9. Verify Whisper Installation:
    ```bash
    python3 -c "import whisper; print(whisper.load_model('base'))"
    ```
 
-11. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
-   ```plaintext
-   APP_ID=<YOUR_APP_ID>
-   DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
-   PUBLIC_KEY=<YOUR_PUBLIC_KEY>
-   OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
-   ```
+10. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+      ```plaintext
+      APP_ID=<YOUR_APP_ID>
+      DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
+      PUBLIC_KEY=<YOUR_PUBLIC_KEY>
+      OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
+      ```
 
 11. Register the commands:
-   ```bash
-   node register_commands.js
-   ```
+      ```bash
+      node register_commands.js
+      ```
 
 12. Start the bot:
-   ```bash
-   node app.js
-   ```
+      ```bash
+      node app.js
+      ```
 
 ### Optional to auto-start with pm2
 1. Install pm2 to global install as signed in user:
@@ -115,15 +131,17 @@ If you prefer to install manually:
    ```bash
    pm2 save
    pm2 startup
+   ```
 
 ---
 
 ## Updates
 
-1. To update the bot, please pull from the git main repository:
+To update the bot, please pull from the git main repository:
    ```bash
    cd dnd-scrying-notetaker
    git pull origin main
+   ```
 
 ---
 
