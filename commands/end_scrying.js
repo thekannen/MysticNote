@@ -2,11 +2,11 @@ import { transcribeAndSaveSessionFolder } from '../utils/whisper.js';
 import { stopRecording, getSessionName, setSessionName, setScryingSessionActive } from '../utils/recording.js';
 import { logger } from '../utils/logger.js';
 
-export async function stopRecordingAndTranscribe(interaction, channelId) {
-  // Determine whether to use interaction or channelId
-  const channel = interaction?.channel || client.channels.cache.get(channelId);
+export async function stopRecordingAndTranscribe(interaction, channel) {
+  // Use the provided channel directly if interaction is not provided
+  const targetChannel = interaction?.channel || channel;
 
-  if (!channel) {
+  if (!targetChannel) {
     logger(`Channel not found. Unable to proceed with transcription.`, 'error');
     return;
   }
@@ -17,7 +17,7 @@ export async function stopRecordingAndTranscribe(interaction, channelId) {
       if (interaction) {
         await interaction.reply('No active scrying session found. Please start a session first.');
       } else {
-        await channel.send('No active scrying session found. Please start a session first.');
+        await targetChannel.send('No active scrying session found. Please start a session first.');
       }
       setScryingSessionActive(false);
       return;
@@ -30,7 +30,7 @@ export async function stopRecordingAndTranscribe(interaction, channelId) {
         ephemeral: false
       });
     } else {
-      await channel.send('Stopping the scrying and processing the vision… This may take a while. Please remain patient and do not leave.');
+      await targetChannel.send('Stopping the scrying and processing the vision… This may take a while. Please remain patient and do not leave.');
     }
     logger('Stopping recording and processing transcription...', 'info');
 
@@ -42,14 +42,14 @@ export async function stopRecordingAndTranscribe(interaction, channelId) {
       if (interaction) {
         await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
       } else {
-        await channel.send(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
+        await targetChannel.send(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
       }
       logger(`Transcription saved to ${transcriptionFile}`, 'info');
     } else {
       if (interaction) {
         await interaction.editReply('Transcription or summary failed.');
       } else {
-        await channel.send('Transcription or summary failed.');
+        await targetChannel.send('Transcription or summary failed.');
       }
       logger('Transcription or summary failed.', 'error');
     }
@@ -63,7 +63,7 @@ export async function stopRecordingAndTranscribe(interaction, channelId) {
     if (interaction) {
       await interaction.editReply('An error occurred while processing the transcription and summary.');
     } else {
-      await channel.send('An error occurred while processing the transcription and summary.');
+      await targetChannel.send('An error occurred while processing the transcription and summary.');
     }
     setScryingSessionActive(false);
   }
