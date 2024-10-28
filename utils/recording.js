@@ -62,7 +62,8 @@ function clearInactivityTimer() {
   }
 }
 
-async function endScryingSession() {
+// End the scrying session due to inactivity
+async function endScryingSession(interaction) {
   if (isScryingSessionActive) {
     const channelId = getScryingChannelId();
     const channel = client.channels.cache.get(channelId);
@@ -72,8 +73,15 @@ async function endScryingSession() {
       return;
     }
 
-    // Call the stop and transcribe helper without relying on interaction
-    await stopRecordingAndTranscribe();
+    // Create a minimal mock interaction for backend processing
+    const mockInteraction = {
+      reply: async () => {}, // No-op for reply
+      editReply: async () => {}, // No-op for editReply
+      channel: interaction?.channel || { send: async () => {} } // Allows sending to channel if available
+    };
+
+    // Call the stop and transcribe helper with the mock interaction
+    await stopRecordingAndTranscribe(mockInteraction);
 
     // Notify the channel that the session ended due to inactivity
     await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
