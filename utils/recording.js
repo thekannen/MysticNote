@@ -5,6 +5,7 @@ import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
+import { stopRecordingAndTranscribe } from '../commands/end_scrying.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -41,14 +42,14 @@ export function clearConnection() {
 }
 
 // Initialize or reset the inactivity timer
-function resetInactivityTimer() {
+function resetInactivityTimer(interaction) {
   if (inactivityTimeout) {
     clearTimeout(inactivityTimeout);
   }
 
   inactivityTimeout = setTimeout(() => {
     logger('No audio detected for 5 minutes. Ending scrying session due to inactivity.', 'info');
-    endScryingSession();
+    endScryingSession(interaction); // Pass interaction to notify the channel
   }, INACTIVITY_LIMIT);
 }
 
@@ -60,12 +61,19 @@ function clearInactivityTimer() {
   }
 }
 
-// End the scrying session
-async function endScryingSession() {
+// End the scrying session due to inactivity
+async function endScryingSession(interaction) {
   if (isScryingSessionActive) {
-    await stopRecording(); // Stop all active recordings
-    setScryingSessionActive(false);
+    // Stop recordings and transcribe any available audio
+    await stopRecordingAndTranscribe(interaction);
+    
+    // Notify the channel of inactivity
+    if (interaction && interaction.channel) {
+      await interaction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    }
+
     clearConnection();
+    setScryingSessionActive(false);
     logger('Scrying session ended due to inactivity.', 'info');
   }
 }
