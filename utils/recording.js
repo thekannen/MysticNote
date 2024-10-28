@@ -64,23 +64,23 @@ function clearInactivityTimer() {
 // End the scrying session due to inactivity
 async function endScryingSession(interaction) {
   if (isScryingSessionActive) {
-    // Create a mock interaction if none is provided
-    const fakeInteraction = interaction || {
-      reply: async (message) => logger(`[MOCK INTERACTION] ${message.content || message}`, 'info'),
-      editReply: async (message) => logger(`[MOCK EDIT] ${message}`, 'info'),
-      channel: interaction?.channel || { send: (msg) => logger(`[MOCK CHANNEL SEND] ${msg}`, 'info') }
+    // Create a minimal mock interaction for backend processing
+    const mockInteraction = {
+      reply: async () => {}, // No-op for reply
+      editReply: async () => {}, // No-op for editReply
+      channel: interaction?.channel || { send: async () => {} } // Allows sending to channel if available
     };
 
-    // Stop recordings and transcribe any available audio using the (real or fake) interaction
-    await stopRecordingAndTranscribe(fakeInteraction);
+    // Call the stop and transcribe helper with the mock interaction
+    await stopRecordingAndTranscribe(mockInteraction);
 
-    // Notify the channel of inactivity (using the mock interaction's channel if interaction was undefined)
-    if (fakeInteraction.channel) {
-      await fakeInteraction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
+    // Notify the channel that the session ended due to inactivity
+    if (interaction?.channel) {
+      await interaction.channel.send('The scrying session has ended due to 5 minutes of inactivity.');
     }
 
     clearConnection();
-    setScryingSessionActive(false);
+    setScryingSessionActive(false, interaction);
     logger('Scrying session ended due to inactivity.', 'info');
   }
 }
@@ -94,7 +94,7 @@ export function getSessionName() {
 }
 
 // Start recording for a user
-export async function startRecording(conn, userId, username) {
+export async function startRecording(conn, userId, username, interaction) {
   if (!conn) {
     logger("Connection is not established. Cannot start recording.", 'error');
     return;
@@ -105,7 +105,7 @@ export async function startRecording(conn, userId, username) {
     return;
   }
 
-  await stopRecording(userId); // Stop existing recording for the user, if any
+  await stopRecording(userId, interaction); // Stop existing recording for the user, if any
 
   if (!currentSessionName) {
     logger("No active session found. Cannot start recording.", 'error');
@@ -136,11 +136,11 @@ export async function startRecording(conn, userId, username) {
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
       activeUsers.delete(userId);
-      resetInactivityTimer(); // Reset inactivity timer on audio activity
+      resetInactivityTimer(interaction); // Reset inactivity timer on audio activity
     });
 
     activeUsers.add(userId);
-    resetInactivityTimer(); // Reset inactivity timer whenever recording starts
+    resetInactivityTimer(interaction); // Reset inactivity timer whenever recording starts
 
     pcmStream.on('end', () => {
       logger(`PCM stream ended for user ${userId}`, 'info');
@@ -159,7 +159,7 @@ export async function startRecording(conn, userId, username) {
 }
 
 // Stop recording for a user or all users
-export async function stopRecording(userId = null) {
+export async function stopRecording(userId = null, interaction) {
   return new Promise((resolve) => {
     if (userId) {
       if (!ffmpegProcesses[userId]) {
@@ -227,16 +227,16 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if (!oldState.channelId && newState.channelId && isScryingSessionActive) {
     startRecording(connection, userId, username);
   } else if (oldState.channelId && !newState.channelId && isScryingSessionActive) {
-    await stopRecording(userId);
+    await stopRecording(userId, interaction);
   }
 });
 
 client.login(process.env.BOT_TOKEN);
 
-export function setScryingSessionActive(isActive) {
+export function setScryingSessionActive(isActive, interaction) {
   isScryingSessionActive = isActive;
   if (isActive) {
-    resetInactivityTimer();
+    resetInactivityTimer(interaction);
   } else {
     clearInactivityTimer();
   }

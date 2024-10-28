@@ -60,7 +60,7 @@ export async function transcribeAudioHandler(interaction) {
       const filePath = path.join(sessionFolder, `audio_${username}_${memberId}_${timestamp}.wav`);
 
       // Start recording for each user
-      await startRecording(conn, memberId, username, filePath);
+      await startRecording(conn, memberId, username, filePath, interaction);
       logger(`Started recording for user ${username} (ID: ${memberId})`, 'info');
     }
 
