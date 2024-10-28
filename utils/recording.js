@@ -69,9 +69,6 @@ async function endScryingSession() {
     await channel.send('The scrying session has ended due to 5 minutes of inactivity.');
     await stopRecordingAndTranscribe(null, channel);
 
-    // Clear connection and session state
-    clearConnection();
-    setScryingSessionActive(false);
     logger('Scrying session ended due to inactivity.', 'info');
   }
 }
