@@ -69,34 +69,37 @@ If you prefer to install manually:
    ```bash
    npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
 
-7. Install Whisper and Python Dependencies:
-   - Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
-
+7. Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
    ```bash
    pip3 install torch
 
 8.  Install Whisper:
    ```bash
    pip3 install git+https://github.com/openai/whisper.git
+   ```
 
-9. Verify Whisper Installation:
+10. Verify Whisper Installation:
    ```bash
    python3 -c "import whisper; print(whisper.load_model('base'))"
+   ```
 
-10. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+11. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
    ```plaintext
    APP_ID=<YOUR_APP_ID>
    DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
    PUBLIC_KEY=<YOUR_PUBLIC_KEY>
    OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
-   
+   ```
+
 11. Register the commands:
    ```bash
    node register_commands.js
+   ```
 
 12. Start the bot:
    ```bash
    node app.js
+   ```
 
 ### Optional to auto-start with pm2
 1. Install pm2 to global install as signed in user:
