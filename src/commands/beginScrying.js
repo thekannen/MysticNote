@@ -58,7 +58,7 @@ export async function transcribeAudioHandler(interaction) {
 
     // Retrieve members in the voice channel for recording setup
     const members = interaction.member.voice.channel.members;
-    const timestamp = generateTimestamp().replace(/[:.]/g, '-');
+    const timestamp = generateTimestamp();
 
     // Loop through each member in the voice channel to initiate recording
     for (const [memberId, member] of members) {

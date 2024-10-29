@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { format } from 'date-fns';
+import { generateTimestamp } from './common';
 
 // Get the hostname of the current system (useful for log identification)
 const hostname = os.hostname();
@@ -17,7 +18,7 @@ if (!fs.existsSync(logsDir)) {
 // Logger function to log messages to both a file and the console
 export function logger(message, type = 'info') {
   // Create a timestamp for the log entry
-  const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+  const timestamp = generateTimestamp(true);
 
   // Format the log entry with a standardized structure
   const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
@@ -26,7 +27,7 @@ export function logger(message, type = 'info') {
   console.log(logEntry);
 
   // Generate the log file name based on the current date and hostname
-  const logFileName = `${hostname}_${format(new Date(), 'yyyy-MM-dd')}.log`;
+  const logFileName = `ScryingBot_${hostname}_${generateTimestamp()}.log`;
   const logFilePath = path.join(logsDir, logFileName);
 
   // Append the log entry to the daily log file, creating a new line for each entry

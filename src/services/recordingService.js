@@ -5,7 +5,7 @@ import path from 'path';
 import config from '../config/config.js';
 import { logger } from '../utils/logger.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
-import { getDirName } from '../utils/common.js';
+import { getDirName, generateTimestamp } from '../utils/common.js';
 import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
 
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
@@ -94,7 +94,7 @@ export async function startRecording(conn, userId, username) {
   }
 
   const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 16000 });
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = generateTimestamp();
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
   try {
