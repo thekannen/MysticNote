@@ -25,7 +25,7 @@ cd dnd-scrying-notetaker
 
 # Install project-specific npm dependencies
 echo "Installing npm dependencies..."
-npm install
+sudo npm install
 
 # Install Whisper and its dependencies
 echo "Installing Whisper and PyTorch dependencies..."
