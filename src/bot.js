@@ -3,13 +3,13 @@ import 'dotenv/config';  // Loads environment variables from .env file
 import { logger } from './utils/logger.js'; 
 
 // Import handlers for each bot command
-import { joinVoiceChannelHandler } from '../commands/gaze.js';
-import { leaveVoiceChannelHandler } from '../commands/leave.js';
-import { transcribeAudioHandler } from '../commands/beginScrying.js';
-import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
-import { consultTheTextsHandler } from '../commands/consultTexts.js';
-import { revealSummary, retrieveFullTranscription } from '../commands/summary.js';
-import { deleteSessionHandler, purgeHandler } from '../commands/deletePurge.js';
+import { joinVoiceChannelHandler } from './commands/gaze.js';
+import { leaveVoiceChannelHandler } from './commands/leave.js';
+import { transcribeAudioHandler } from './commands/beginScrying.js';
+import { stopRecordingAndTranscribe } from './commands/endScrying.js';
+import { consultTheTextsHandler } from './commands/consultTexts.js';
+import { revealSummary, retrieveFullTranscription } from './commands/summary.js';
+import { deleteSessionHandler, purgeHandler } from './commands/deletePurge.js';
 
 // Initialize the Discord client with voice and guild interaction intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
