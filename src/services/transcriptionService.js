@@ -7,16 +7,6 @@ import { logger } from '../utils/logger.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
-const localDateFormatter = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-const localOffsetMs = new Date().getTimezoneOffset() * -60000;
 
 // Function to transcribe all audio files in a session folder and save the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
@@ -44,8 +34,8 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {
       transcriptions.push(...transcriptionSegments.map(segment => ({
-        start: new Date(fileCreationTime.getTime() + segment.start * 1000 + localOffsetMs),
-        end: new Date(fileCreationTime.getTime() + segment.end * 1000 + localOffsetMs),
+        start: new Date(fileCreationTime.getTime() + segment.start * 1000),
+        end: new Date(fileCreationTime.getTime() + segment.end * 1000),
         username,
         text: segment.text
       })));
@@ -55,7 +45,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   const aggregatedTranscriptions = aggregateTranscriptions(transcriptions);
   const combinedTranscription = formatTranscription(aggregatedTranscriptions);
 
-  const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[:.]/g, '-')}.txt`);
+  const finalFilePath = path.join(sessionTranscriptsDir, `full_conversation_log_${generateTimestamp().replace(/[: ]/g, '-')}.txt`);
   fs.writeFileSync(finalFilePath, combinedTranscription);
 
   logger(`Full transcription saved as ${finalFilePath}`, 'info');
@@ -99,8 +89,8 @@ function aggregateTranscriptions(transcriptions) {
 // Helper to format transcription entries for readability
 function formatTranscription(transcriptions) {
   return transcriptions.map(entry => {
-    const start = localDateFormatter.format(entry.start);
-    const end = localDateFormatter.format(entry.end);
+    const start = entry.start.toLocaleString();
+    const end = entry.end.toLocaleString();
     return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
   }).join('\n\n');
 }

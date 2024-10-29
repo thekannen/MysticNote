@@ -61,9 +61,20 @@ export function getDirName() {
   return __dirname;
 }
 
-// Generates a timestamp in ISO UTC format for consistent file naming
-export function generateTimestamp() {
-  return new Date().toISOString();
+// Generates a timestamp based on the server's local timezone for consistent file naming
+export function generateTimestamp(forLogging = false) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  if (forLogging) {
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+  return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for file naming
 }
 
 // Deletes all files matching a specific pattern in the current directory

@@ -1,6 +1,6 @@
 {
-    "inactivityTimeoutMinutes": 5,
-    "sessionNameMaxLength": 50,
-    "whisperModel": "base",
-    "openAIModel": "gpt-4-turbo"
-  }
+  "inactivityTimeoutMinutes": 5,
+  "sessionNameMaxLength": 50,
+  "whisperModel": "base",
+  "openAIModel": "gpt-4-turbo"
+}

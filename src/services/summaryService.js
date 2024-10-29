@@ -1,21 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../utils/logger.js';
-import { getDirName } from '../utils/common.js';
+import { getDirName, generateTimestamp } from '../utils/common.js';
 import config from '../config/config.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
-
-// Helper to get the server's local date formatter
-const localDateFormatter = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
 
 // Generates a summary from the transcription text using the OpenAI API
 export async function generateSummary(transcriptionText, sessionName) {
@@ -67,7 +56,7 @@ function saveSummaryToFile(sessionTranscriptsDir, sessionName, summary) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
   }
 
-  const localTimestamp = localDateFormatter.format(new Date()).replace(/[/, :]/g, '-');
+  const localTimestamp = generateTimestamp();
   const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
   
   fs.writeFileSync(summaryFilePath, summary);
