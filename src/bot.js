@@ -3,7 +3,7 @@ dotenv.config({ path: '../.env' });
 
 import { Client, GatewayIntentBits } from 'discord.js';
 import { logger } from './utils/logger.js'; 
-import { setConnection, clearConnection, startRecording, stopRecording, setScryingSessionActive, endScryingSession } from './services/recordingService.js';
+import { startRecording, stopRecording, setScryingSessionActive } from './services/recordingService.js';
 
 import { joinVoiceChannelHandler } from './commands/gaze.js';
 import { leaveVoiceChannelHandler } from './commands/leave.js';
