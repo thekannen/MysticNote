@@ -43,7 +43,7 @@ This application was created with extensive guidance from OpenAI's ChatGPT to he
 ## Features
 
 - **Real-Time Voice Recording**: Joins a Discord voice channel and records multiple users.
-- **Automatic Transcription**: Uses OpenAI Whisper API to transcribe audio in real-time.
+- **Automatic Transcription**: Uses OpenAI Whisper to transcribe audio after recording has finished.
 - **Session Summaries**: Provides both full transcriptions and concise summaries.
 - **Multi-User Support**: Records multiple users and tracks individual sessions.
 - **Storage Management**: Configurable storage settings, ensuring organized and efficient usage.
@@ -78,9 +78,9 @@ These are just general recommendations.
 
 ### Quick Install (via Bash Script)
 
-1. Clone the repository and install dependencies by running the following command:
+Clone the repository and install dependencies by running the following command:
    ```bash
-   bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup_discord_bot.sh)
+   bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup/setupDiscordBot.sh)
    ```
 
 ### Manual Installation ( Ubuntu )
