@@ -4,7 +4,7 @@ import prism from 'prism-media';
 import path from 'path';
 import config from '../config/config.js';
 import { logger } from '../utils/logger.js';
-import { resetInactivityTimer, clearInactivityTimer } from './timers.js';
+import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName } from '../utils/common.js';
 import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
 
