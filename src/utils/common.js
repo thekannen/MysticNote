@@ -1,4 +1,6 @@
-import 'dotenv/config'; // Loads environment variables from .env file
+import dotenv from 'dotenv';
+dotenv.config({ path: '../../.env' });
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

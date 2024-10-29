@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '../.env' });
+
 import { InstallGlobalCommands } from '../src/utils/common.js';
 import config from '../src/config/config.js';
 
