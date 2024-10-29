@@ -68,7 +68,7 @@ These are just general recommendations.
 
 ### Quick Install (via Bash Script)
 
-1. Clone the repository and install dependencies by running the following command:
+Clone the repository and install dependencies by running the following command:
    ```bash
    bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup_discord_bot.sh)
    ```
