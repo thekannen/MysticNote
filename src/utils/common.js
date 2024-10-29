@@ -6,7 +6,7 @@ import { logger } from './logger.js'; // Custom logger utility
 import config from '../config/config.js'; // Configuration file
 
 // Define the directory where recordings are saved
-const recordingsDir = path.join(getDirName(), '../bin/recordings');
+const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
 // Sends an API request to Discord with the specified endpoint and options
 export async function DiscordRequest(endpoint, options) {

@@ -3,7 +3,7 @@ import path from 'path';
 import { getDirName } from '../utils/common.js';
 
 // Define the path to the configuration file
-const configPath = path.join(getDirName(), 'conf.json');
+const configPath = path.join(getDirName(), '../../conf.json');
 
 let config = {};
 try {
