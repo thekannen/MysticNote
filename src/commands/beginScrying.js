@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import config from '../config/config.js';
 import { getDirName } from '../utils/common.js';
-import { generateTimestamp } from '../utils.js';
+import { generateTimestamp } from '../utils/common.js';
 import { startRecording, setSessionName, getActiveConnection, setScryingSessionActive } from '../services/recordingService.js';
 import { logger } from '../utils/logger.js';
 
