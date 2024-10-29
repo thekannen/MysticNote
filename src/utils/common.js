@@ -2,7 +2,7 @@ import 'dotenv/config'; // Loads environment variables from .env file
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from 'logger.js'; // Custom logger utility
+import { logger } from './logger.js'; // Custom logger utility
 import config from '../config/config.js'; // Configuration file
 
 // Define the directory where recordings are saved
