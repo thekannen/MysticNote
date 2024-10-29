@@ -1,5 +1,5 @@
 import { getVoiceConnection } from '@discordjs/voice';
-import { isScryingSessionOngoing, clearConnection } from '../utils/recording.js';
+import { isScryingSessionOngoing, clearConnection } from '../services/recordingService.js';
 import { logger } from '../utils/logger.js';
 
 /**
