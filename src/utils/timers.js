@@ -21,7 +21,7 @@ export function setInactivityTimer(onTimeout, timeoutDuration) {
  * @param {number} timeoutDuration - Duration in milliseconds before the timer expires.
  */
 export function resetInactivityTimer(onTimeout, timeoutDuration) {
-  logger('Resetting inactivity timer due to audio activity.', 'info');
+  //logger('Resetting inactivity timer due to audio activity.', 'info');
   setInactivityTimer(onTimeout, timeoutDuration);
 }
 
@@ -32,6 +32,6 @@ export function clearInactivityTimer() {
   if (inactivityTimeout) {
     clearTimeout(inactivityTimeout);
     inactivityTimeout = null;
-    logger('Inactivity timer cleared.', 'info');
+    //logger('Inactivity timer cleared.', 'info');
   }
 }
