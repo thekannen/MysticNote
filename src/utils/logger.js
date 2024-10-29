@@ -1,8 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { format } from 'date-fns';
-import { generateTimestamp } from './common';
+import { generateTimestamp } from './common.js';
 
 // Get the hostname of the current system (useful for log identification)
 const hostname = os.hostname();
