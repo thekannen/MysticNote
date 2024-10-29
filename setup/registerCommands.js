@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { InstallGlobalCommands } from '../src/utils/common';
-import config from '../config/config.js';
+import { InstallGlobalCommands } from '../src/utils/common.js';
+import config from '../src/config/config.js';
 
 // Define command list with their descriptions and options
 
