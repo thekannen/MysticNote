@@ -25,7 +25,7 @@ cd dnd-scrying-notetaker
 
 # Install project-specific npm dependencies
 echo "Installing npm dependencies..."
-npm install discord.js @discordjs/voice prism-media form-data node-fetch @discordjs/opus ffmpeg-static dotenv date-fns
+npm install
 
 # Install Whisper and its dependencies
 echo "Installing Whisper and PyTorch dependencies..."
