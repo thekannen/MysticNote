@@ -2,6 +2,31 @@
 
 A custom Discord bot designed for Dungeons & Dragons gameplay, utilizing the OpenAI Whisper API to record and transcribe voice channel interactions in real-time. This bot captures scrying sessions, summarizes them, and organizes logs for easy review.
 
+## Table of Contents
+- [Disclaimer](#disclaimer)
+- [Features](#features)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Server Recommendations](#server-recommendations)
+  - [Quick Install (via Bash Script)](#quick-install-via-bash-script)
+  - [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
+  - [Configure Environment Variables](#configure-environment-variables)
+  - [Configure conf.json Settings](#configure-confjson-settings)
+  - [Register the Commands](#register-the-commands)
+  - [Start the Bot](#start-the-bot)
+  - [Optional to Auto-Start with pm2](#optional-to-auto-start-with-pm2)
+- [Updates](#updates)
+- [conf.json Settings](#confjson-settings)
+  - [inactivityTimeoutMinutes](#inactivitytimeoutminutes)
+  - [sessionNameMaxLength](#sessionnamemaxlength)
+  - [whisperModel](#whispermodel)
+  - [openAIModel](#openaimodel)
+- [Usage](#usage)
+  - [Commands](#commands)
+  - [Example Workflow](#example-workflow)
+- [Support This Project](#support-this-project)
+- [License](#license)
+
 ---
 
 ## Disclaimer
@@ -68,6 +93,7 @@ If you prefer to install manually:
 
 2. Clone the Repository: 
    ```bash
+   cd ~
    git clone https://github.com/thekannen/dnd-scrying-notetaker.git
    cd dnd-scrying-notetaker
 
@@ -91,7 +117,7 @@ If you prefer to install manually:
 
 6. Install Node.js Dependencies:
    ```bash
-   npm install discord.js @discordjs/voice prism-media form-data node-fetch openai @discordjs/opus ffmpeg-static dotenv date-fns
+   sudo npm install
    ```
 
 7. Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
@@ -109,14 +135,22 @@ If you prefer to install manually:
    python3 -c "import whisper; print(whisper.load_model('base'))"
    ```
 
-10. Configure Environment Variables: Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+10. Configure Environment Variables; Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
       ```plaintext
       APP_ID=<YOUR_APP_ID>
       DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
       PUBLIC_KEY=<YOUR_PUBLIC_KEY>
       OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
       ```
-
+11. Configure conf.json settings file:
+      ```json
+      {
+     "inactivityTimeoutMinutes": 5,
+     "sessionNameMaxLength": 50,
+     "whisperModel": "base",
+     "openAIModel": "gpt-4-turbo"
+      }
+      ```
 11. Register the commands:
       ```bash
       node register_commands.js
@@ -124,7 +158,8 @@ If you prefer to install manually:
 
 12. Start the bot:
       ```bash
-      node app.js
+      cd ~/dnd-scrying-notetaker/src
+      node bot.js
       ```
 
 ### Optional to auto-start with pm2
@@ -134,10 +169,11 @@ If you prefer to install manually:
    sudo npm install pm2 -g
 
 2. Start the bot with pm2:
+   Note: Change <user> to match your username.
    ```bash
-   pm2 start /home/<user>/dnd-scrying-notetaker/app.js --name "dnd-scrying-bot"
+   pm2 start /home/<user>/dnd-scrying-notetaker/src/bot.js --name "dnd-scrying-bot"
 
-3. Save the pm2 process list and startup:
+4. Save the pm2 process list and startup:
    ```bash
    pm2 save
    pm2 startup
@@ -149,9 +185,43 @@ If you prefer to install manually:
 
 To update the bot, please pull from the git main repository:
    ```bash
-   cd dnd-scrying-notetaker
+   cd ~/dnd-scrying-notetaker
    git pull origin main
    ```
+
+---
+
+### `conf.json` Settings
+
+1. **`inactivityTimeoutMinutes`**  
+   Determines the duration, in minutes, for which the bot monitors audio activity during a recording session. If no audio is detected within this timeframe, the session will automatically end due to inactivity.
+
+   - **Type**: Integer  
+   - **Default**: `5`  
+   - **Example**: Setting this to `10` will keep the session open for 10 minutes without audio before ending.
+
+2. **`sessionNameMaxLength`**  
+   Specifies the maximum character length allowed for session names, restricting the length of names given to each scrying session.
+
+   - **Type**: Integer  
+   - **Default**: `50`  
+   - **Example**: Increasing this value allows for longer session names.
+
+3. **`whisperModel`**  
+   Defines the Whisper model used for transcription. Models vary in size and accuracy, with larger models providing better transcription accuracy at the cost of higher computational resources.
+
+   - **Type**: String  
+   - **Default**: `"base"`  
+   - **Options**: `"tiny"`, `"base"`, `"small"`, `"medium"`, `"large"`  
+   - **Example**: Setting this to `"small"` reduces the model size for quicker transcription times.
+
+4. **`openAIModel`**  
+   Specifies the OpenAI language model used for generating session summaries. Larger models, such as GPT-4, provide more nuanced summaries but may require higher usage limits or API costs.
+
+   - **Type**: String  
+   - **Default**: `"gpt-4-turbo"`  
+   - **Options**: `"gpt-3.5-turbo"`, `"gpt-4"`, `"gpt-4-turbo"`  
+   - **Example**: `"gpt-3.5-turbo"` is suitable if you require a faster, more cost-effective model for summaries.
 
 ---
 
