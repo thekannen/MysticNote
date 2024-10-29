@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 const hostname = os.hostname();
 
 // Define the path for the logs directory
-const logsDir = path.join(path.resolve(), '../../bin/logs');
+const logsDir = path.join(path.resolve(), '../bin/logs');
 
 // Ensure the logs directory exists, creating it if necessary
 if (!fs.existsSync(logsDir)) {

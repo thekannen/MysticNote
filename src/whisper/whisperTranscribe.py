@@ -9,8 +9,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Load the configuration file
-config_path = os.path.join(os.path.dirname(__file__), '../config.json')
-with open(config_path, 'r') as f:
+config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config/'))
+config_file = os.path.join(config_dir, 'config.json')
+with open(config_file, 'r') as f:
     config = json.load(f)
 
 def transcribe_with_timestamps(file_path):
