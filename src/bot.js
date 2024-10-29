@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import 'dotenv/config';  // Loads environment variables from .env file
-import { logger } from '../utils/logger.js'; 
+import { logger } from './utils/logger.js'; 
 
 // Import handlers for each bot command
 import { joinVoiceChannelHandler } from '../commands/gaze.js';
