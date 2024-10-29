@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../utils/logger.js';
+import { getDirName } from '../utils/common.js';
 import config from '../config/config.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
