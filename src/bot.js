@@ -3,8 +3,8 @@ dotenv.config({ path: '../.env' });
 
 import { Client, GatewayIntentBits } from 'discord.js';
 import { logger } from './utils/logger.js'; 
+import { setConnection, clearConnection, startRecording, stopRecording, setScryingSessionActive, endScryingSession } from './services/recordingService.js';
 
-// Import handlers for each bot command
 import { joinVoiceChannelHandler } from './commands/gaze.js';
 import { leaveVoiceChannelHandler } from './commands/leave.js';
 import { transcribeAudioHandler } from './commands/beginScrying.js';
@@ -13,7 +13,7 @@ import { consultTheTextsHandler } from './commands/consultTexts.js';
 import { revealSummary, retrieveFullTranscription } from './commands/summary.js';
 import { deleteSessionHandler, purgeHandler } from './commands/deletePurge.js';
 
-// Initialize the Discord client with voice and guild interaction intents
+// Initialize the Discord client with required intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
 // Event triggered once the bot successfully logs in
@@ -21,62 +21,79 @@ client.once('ready', () => {
   logger(`Logged in as ${client.user.tag}`, 'info');
 });
 
-// Event listener for handling incoming commands
+// Event listener for user join/leave in voice channel
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  const voiceChannel = newState.channel || oldState.channel;
+
+  // Check if the bot is in the voice channel
+  if (!voiceChannel || !voiceChannel.members.has(client.user.id)) {
+    logger('Bot is not connected to the channel.', 'info');
+    return;
+  }
+
+  const userId = newState.member.id;
+  const username = newState.member.user.username;
+
+  // If a user joins the channel and scrying is active, start recording
+  if (!oldState.channelId && newState.channelId && setScryingSessionActive) {
+    startRecording(client, userId, username); // startRecording now accepts client as a parameter
+  }
+  // If a user leaves the channel and scrying is active, stop recording
+  else if (oldState.channelId && !newState.channelId && setScryingSessionActive) {
+    await stopRecording(userId);
+  }
+});
+
+// Command handler for bot interactions
 client.on('interactionCreate', async (interaction) => {
-  // Check if the interaction is a command, exit if not
   if (!interaction.isCommand()) return;
 
   try {
-    // Extract command name from the interaction
     const { commandName } = interaction;
 
-    // Handle the command based on its name
     switch (commandName) {
       case 'gaze':
         logger('Handling command: gaze', 'info');
-        await joinVoiceChannelHandler(interaction);  // Joins the voice channel
+        await joinVoiceChannelHandler(interaction);
         break;
       case 'leave':
         logger('Handling command: leave', 'info');
-        await leaveVoiceChannelHandler(interaction);  // Leaves the voice channel
+        await leaveVoiceChannelHandler(interaction);
         break;
       case 'begin_scrying':
         logger('Handling command: begin_scrying', 'info');
-        await transcribeAudioHandler(interaction);  // Begins scrying session (recording)
+        await transcribeAudioHandler(interaction);
         break;
       case 'end_scrying':
         logger('Handling command: end_scrying', 'info');
-        await stopRecordingAndTranscribe(interaction);  // Ends scrying session (transcription)
+        await stopRecordingAndTranscribe(interaction);
         break;
       case 'consult_the_texts':
         logger('Handling command: consult_the_texts', 'info');
-        await consultTheTextsHandler(interaction);  // Lists available scrying sessions
+        await consultTheTextsHandler(interaction);
         break;
       case 'reveal_summary':
         logger('Handling command: reveal_summary', 'info');
-        await revealSummary(interaction);  // Reveals summary of a scrying session
+        await revealSummary(interaction);
         break;
       case 'complete_vision':
         logger('Handling command: complete_vision', 'info');
-        await retrieveFullTranscription(interaction);  // Retrieves full transcription of a session
+        await retrieveFullTranscription(interaction);
         break;
       case 'delete_session':
         logger('Handling command: delete_session', 'info');
-        await deleteSessionHandler(interaction);  // Deletes a specific scrying session
+        await deleteSessionHandler(interaction);
         break;
       case 'purge':
         logger('Handling command: purge', 'info');
-        await purgeHandler(interaction);  // Deletes all scrying sessions
+        await purgeHandler(interaction);
         break;
       default:
-        // Handles unknown commands
         logger(`Unknown command: ${commandName}`, 'warning');
         await interaction.reply({ content: 'Unknown command.', ephemeral: true });
     }
   } catch (error) {
-    // Log any errors encountered during command processing
     logger(`Error handling command "${interaction.commandName}": ${error.message}`, 'error');
-    // Notify the user of the error if possible
     await interaction.reply({ content: 'An error occurred while processing your command.', ephemeral: true });
   }
 });
@@ -85,5 +102,5 @@ client.on('interactionCreate', async (interaction) => {
 client.login(process.env.BOT_TOKEN).then(() => {
   logger('Successfully logged into Discord.', 'info');
 }).catch((error) => {
-  logger(`Failed to login to Discord: ${error.message}`, 'error');  // Log an error if login fails
+  logger(`Failed to login to Discord: ${error.message}`, 'error');
 });
