@@ -4,7 +4,7 @@ import { getDirName } from '../utils/common.js';
 import { logger } from '../utils/logger.js';
 
 // Path to the Whisper Python script
-const pythonScript = path.join(getDirName(), 'whisperTranscribe.py');
+const pythonScript = path.join(getDirName(), '../whisper/whisperTranscribe.py');
 
 // Function to transcribe a single audio file using Whisper
 export async function transcribeFileWithWhisper(filePath, username) {
