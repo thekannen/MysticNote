@@ -42,7 +42,7 @@ EOF
 echo "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, and <YOUR_PUBLIC_KEY> in the .env file."
 
 # Final message
-echo "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node app.js' from the dnd-scrying-notetaker directory."
+echo "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node bot.js' from the dnd-scrying-notetaker/src directory."
 
 # Ensure script is executable
-chmod +x setup_discord_bot.sh
+chmod +x setupDiscordBot.sh
