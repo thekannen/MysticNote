@@ -26,7 +26,8 @@ export function logger(message, type = 'info') {
   console.log(logEntry);
 
   // Generate the log file name based on the current date and hostname
-  const logFileName = `ScryingBot_${hostname}_${generateTimestamp()}.log`;
+  // Generate the log file name based on the current date (one per day)
+  const logFileName = `ScryingBot_${hostname}_${new Date().toISOString().split('T')[0]}.log`;
   const logFilePath = path.join(logsDir, logFileName);
 
   // Append the log entry to the daily log file, creating a new line for each entry
