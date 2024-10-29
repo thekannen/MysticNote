@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { transcribeFileWithWhisper } from '../WhisperService.js';
-import { generateSummary } from '../SummaryService.js';
+import { transcribeFileWithWhisper } from './whisperService.js';
+import { generateSummary } from './summaryService.js';
 import { generateTimestamp } from '../../utils.js';
 import { getDirName } from '../utils/common.js';
 import { logger } from '../utils/logger.js';

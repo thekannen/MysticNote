@@ -1,5 +1,3 @@
-// WhisperService.js
-
 import { execFile } from 'child_process';
 import path from 'path';
 import { getDirName } from '../utils/common.js';
