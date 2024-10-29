@@ -72,7 +72,7 @@ export function getSessionName() {
   return currentSessionName;
 }
 
-// Starts recording for a user and monitors audio activity to reset inactivity timer
+// Starts recording for a user with optimized audio settings
 export async function startRecording(conn, userId, username) {
   if (!conn || !conn.receiver) {
     logger("Connection is not established or lacks a valid receiver. Cannot start recording.", 'error');
@@ -93,7 +93,7 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 16000 });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
@@ -101,8 +101,15 @@ export async function startRecording(conn, userId, username) {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
+    // Use FFmpeg to capture a lower-quality mono recording at 16 kHz
     ffmpegProcesses[userId] = spawn('ffmpeg', [
-      '-y', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0', filePath
+      '-y',                      // Overwrite if file exists
+      '-f', 's16le',             // PCM format
+      '-ar', '16000',            // Sample rate of 16 kHz
+      '-ac', '1',                // Mono channel
+      '-i', 'pipe:0',            // Input from stdin
+      '-c:a', 'pcm_u8',          // 8-bit PCM format for reduced file size
+      filePath                   // Output file path
     ]);
 
     pcmStream.pipe(ffmpegProcesses[userId].stdin);
