@@ -3,7 +3,7 @@ dotenv.config({ path: '../.env' });
 
 import { Client, GatewayIntentBits } from 'discord.js';
 import { logger } from './utils/logger.js'; 
-import { startRecording, stopRecording, setScryingSessionActive } from './services/recordingService.js';
+import { startRecording, stopRecording, isScryingSessionOngoing, getActiveConnection } from './services/recordingService.js';
 
 import { joinVoiceChannelHandler } from './commands/gaze.js';
 import { leaveVoiceChannelHandler } from './commands/leave.js';
@@ -34,13 +34,21 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const userId = newState.member.id;
   const username = newState.member.user.username;
 
-  // If a user joins the channel and scrying is active, start recording
-  if (!oldState.channelId && newState.channelId && setScryingSessionActive) {
-    startRecording(client, userId, username); // startRecording now accepts client as a parameter
-  }
-  // If a user leaves the channel and scrying is active, stop recording
-  else if (oldState.channelId && !newState.channelId && setScryingSessionActive) {
-    await stopRecording(userId);
+  // Check if a scrying session is currently active
+  if (isScryingSessionOngoing()) {
+    // If a user joins the channel, start recording
+    if (!oldState.channelId && newState.channelId) {
+      const connection = getActiveConnection(newState.guild.id); // Assuming getActiveConnection returns the current connection
+      if (connection) {
+        startRecording(connection, userId, username); // startRecording now accepts connection as a parameter
+      } else {
+        logger("No active connection found for the guild. Cannot start recording.", "error");
+      }
+    }
+    // If a user leaves the channel, stop recording
+    else if (oldState.channelId && !newState.channelId) {
+      await stopRecording(userId);
+    }
   }
 });
 
