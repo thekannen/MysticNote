@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
 import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
 
 // Directory for storing recordings
-const sessionDir = path.join(getDirName(), '../../bin/recordings', currentSessionName);
+const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
 // Initialize the Discord client with specific intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -107,6 +107,8 @@ export async function startRecording(conn, userId, username) {
     logger("No active session found. Cannot start recording.", 'error');
     return;
   }
+
+  const sessionDir = path.join(recordingsDir, currentSessionName);
 
   // Ensures the session directory exists
   if (!fs.existsSync(sessionDir)) {
