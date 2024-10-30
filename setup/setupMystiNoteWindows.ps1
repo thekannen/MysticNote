@@ -1,4 +1,4 @@
-# PowerShell Script to Set Up Discord Bot and Whisper on Windows
+# PowerShell Script to Set Up MystiNote and Whisper on Windows
 
 # Update system (Note: Windows doesn't use apt, so no direct equivalent)
 Write-Output "Ensuring system dependencies are installed..."
@@ -22,7 +22,7 @@ Write-Output "Python version: $(python --version)"
 
 # Clone repository
 Write-Output "Cloning the Discord bot repository..."
-git clone https://github.com/thekannen/dnd-scrying-notetaker.git dnd-scrying-notetaker
+git clone https://github.com/thekannen/dnd-scrying-notetaker.git MystiNote
 Set-Location -Path "dnd-scrying-notetaker"
 
 # Install project-specific npm dependencies
@@ -44,4 +44,4 @@ PUBLIC_KEY=<YOUR_PUBLIC_KEY>
 Write-Output "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, and <YOUR_PUBLIC_KEY> in the .env file."
 
 # Final message
-Write-Output "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node bot.js' from the dnd-scrying-notetaker/src directory."
+Write-Output "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node bot.js' from the MystiNote/src directory."

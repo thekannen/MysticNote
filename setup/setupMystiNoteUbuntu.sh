@@ -20,8 +20,8 @@ npm -v
 
 # Clone repository
 echo "Cloning the Discord bot repository..."
-git clone https://github.com/thekannen/dnd-scrying-notetaker.git dnd-scrying-notetaker
-cd dnd-scrying-notetaker
+git clone https://github.com/thekannen/MystiNote.git MystiNote
+cd MystiNote
 
 # Install project-specific npm dependencies
 echo "Installing npm dependencies..."
@@ -42,7 +42,7 @@ EOF
 echo "Please replace <YOUR_APP_ID>, <YOUR_DISCORD_BOT_TOKEN>, and <YOUR_PUBLIC_KEY> in the .env file."
 
 # Final message
-echo "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node bot.js' from the dnd-scrying-notetaker/src directory."
+echo "Setup complete! Whisper and Discord bot dependencies are installed. Configure your bot in the .env file, and start it with 'node bot.js' from the MystiNote/src directory."
 
 # Ensure script is executable
-chmod +x setupDiscordBot.sh
+chmod +x setupMystiNoteUbuntu.sh

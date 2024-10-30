@@ -1,9 +1,9 @@
-# DnD Scrying Notetaker Bot
+# MystiNote
 
-A custom Discord bot designed for Dungeons & Dragons gameplay, utilizing the OpenAI Whisper API to record and transcribe voice channel interactions in real-time. This bot captures scrying sessions, summarizes them, and organizes logs for easy review.
+A versatile Discord bot built to record, transcribe, and summarize voice channel interactions. Using OpenAI's Whisper API, this bot captures conversations, generates summaries, and organizes transcriptions for convenient playback and review. Whether for gaming sessions, meetings, or casual conversations, this bot provides transcription services and structured records of each session.
 
 ## Table of Contents
-- [DnD Scrying Notetaker Bot](#dnd-scrying-notetaker-bot)
+- [MystiNote](#mystinote)
   - [Table of Contents](#table-of-contents)
   - [Disclaimer](#disclaimer)
   - [Features](#features)
@@ -24,7 +24,6 @@ A custom Discord bot designed for Dungeons & Dragons gameplay, utilizing the Ope
 - [Example Workflow](#example-workflow)
   - [Support This Project](#support-this-project)
   - [License](#license)
-
 
 ---
 
@@ -47,17 +46,29 @@ This application was developed with the assistance of OpenAI's ChatGPT to stream
 
 ### Prerequisites
 
-1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
-2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
+1. **Discord Bot App ID, Public Key, and Token**  
+   To set up a Discord bot, you need to register it in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
 
-1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
-2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
+   - **Follow the Discord documentation**: Use [this guide](https://discord.com/developers/docs/quick-start/getting-started#step-1-creating-an-app) to create and register the bot app.
+   - **Setting Permissions**: Configure the bot’s permissions correctly in the Developer Portal to allow it to join channels, send messages, and use slash commands.
+     - Go to **"Installation"** and scroll to **"Default Install Settings"**.
+     - Under **"SCOPES"** for *Guild Install*, ensure **"bot"** is selected.
+     - In **"PERMISSIONS"**, enable the following options:
+       - **Connect**
+       - **Send Messages**
+       - **Speak**
+       - **Use Slash Commands**
+       - **View Channels**
+
+2. **OpenAI API Key**  
+   Obtain an API key from [OpenAI](https://platform.openai.com/) to allow the bot to use the Whisper and GPT models.
+
+   - **Follow OpenAI’s documentation**: Use [this guide](https://platform.openai.com/docs/quickstart) to generate your API key.
+   - **Note**: OpenAI’s API is a paid service, and usage fees will apply based on the models you use and the volume of requests.
 
 ### Server Recommendations
 Your server resources will vary depending on the Whisper model you choose and how many recordings you want to process/keep.
 These are just general recommendations. Read more about Whisper [here](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
-
-
 
 | CPU Threads | RAM | Storage |
 | --- | --- | --- |
@@ -68,12 +79,12 @@ These are just general recommendations. Read more about Whisper [here](https://g
 Clone the repository and install dependencies by running the following scripts:
 #### Ubuntu
    ```bash
-   bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup/setupDiscordBot.sh)
+   bash <(curl -s https://raw.githubusercontent.com/thekannen/MystiNote/refs/heads/main/setup/setupMystiNoteUbuntu.sh)
    ```
 
 #### Windows
    ```powershell
-   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('changepath'))
+   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('[changepath](https://raw.githubusercontent.com/thekannen/MystiNote/refs/heads/main/setup/setupMystiNoteWindows.ps1)'))
    ```
 
 ### Manual Installation ( Ubuntu )
@@ -87,8 +98,8 @@ If you prefer to install manually:
 2. Clone the Repository: 
    ```bash
    cd ~
-   git clone https://github.com/thekannen/dnd-scrying-notetaker.git
-   cd dnd-scrying-notetaker
+   git clone https://github.com/thekannen/MystiNote.git
+   cd MystiNote
    ```
 
 3. Install Node.js and npm (using NodeSource for the latest LTS version):
@@ -152,21 +163,21 @@ If you prefer to install manually:
 
 13. Start the bot:
       ```bash
-      cd ~/dnd-scrying-notetaker/src
+      cd ~/MystiNote/src
       node bot.js
       ```
 
 #### Optional to auto-start with pm2
 1. Install pm2 to global install as signed in user:
    ```bash
-   cd dnd-scrying-notetaker
+   cd MystiNote
    sudo npm install pm2 -g
    ```
 
 2. Start the bot with pm2:
    Note: Change <user> to match your username.
    ```bash
-   pm2 start /home/<user>/dnd-scrying-notetaker/src/bot.js --name "dnd-scrying-bot"
+   pm2 start /home/<user>/MystiNote/src/bot.js --name "MystiNote"
    ```
 
 3. Save the pm2 process list and startup:
@@ -191,8 +202,8 @@ If you prefer to install manually:
    - In PowerShell, run:
       ```powershell
       cd ~
-      git clone https://github.com/thekannen/dnd-scrying-notetaker.git
-      cd dnd-scrying-notetaker
+      git clone https://github.com/thekannen/MystiNote.git
+      cd MystiNote
       ```
 
 3. Install Node.js Dependencies:
@@ -238,7 +249,7 @@ If you prefer to install manually:
 
 10. Start the bot:
       ```powershell
-      cd ~/dnd-scrying-notetaker/src
+      cd ~/MystiNote/src
       node bot.js
       ```
 
@@ -251,7 +262,7 @@ If you prefer to install manually:
 2. Start the bot with pm2:
    Note: Change <user> to match your username.
    ```powershell
-     pm2 start .\src\bot.js --name "dnd-scrying-bot"
+     pm2 start .\src\bot.js --name "MystiNote"
    ```
 
 3. Save the pm2 process list and startup:
@@ -265,7 +276,7 @@ If you prefer to install manually:
 
 To update the bot, please pull from the git main repository:
    ```bash
-   cd ~/dnd-scrying-notetaker
+   cd ~/MystiNote
    git pull origin main
    ```
 
@@ -296,12 +307,17 @@ To update the bot, please pull from the git main repository:
    - **Example**: Setting this to `"small"` reduces the model size for quicker transcription times.
 
 4. **`openAIModel`**  
-   Specifies the OpenAI language model used for generating session summaries. Larger models, such as GPT-4, provide more nuanced summaries but may require higher usage limits or API costs.
+   Specifies the OpenAI language model used for generating session summaries. Larger models, such as those in the GPT-4 series, offer more nuanced summaries but may have higher usage limits or API costs. The selected model will affect the quality, detail, and potential cost of the summary generation.
 
    - **Type**: String  
    - **Default**: `"gpt-4-turbo"`  
-   - **Options**: `"gpt-3.5-turbo"`, `"gpt-4"`, `"gpt-4-turbo"`  
-   - **Example**: `"gpt-3.5-turbo"` is suitable if you require a faster, more cost-effective model for summaries.
+   - **Options**:
+     - **`"gpt-4-turbo-32k"`**: Ideal for handling very long sessions, with up to 32,768 tokens (approximately 24,576 words per chunk).
+     - **`"gpt-4-turbo"`**: Suitable for most sessions, with a limit of 8,192 tokens (approximately 6,144 words per chunk).
+     - **`"gpt-3.5-turbo-16k"`**: A cost-effective option with up to 16,384 tokens (approximately 12,288 words per chunk).
+     - **`"gpt-3.5-turbo"`**: The most budget-friendly choice, best for shorter sessions, with a limit of 4,096 tokens (approximately 3,072 words per chunk).   
+   - **Example**: Setting `"gpt-3.5-turbo"` is suitable if you want a faster, more cost-effective model, particularly for shorter summaries.
+
 
 5. **`saveRecordings`**  
    Determines whether to keep or delete audio recordings after they have been successfully transcribed and summarized. Set to false if you want to automatically delete recordings, reducing storage use, or set to true if you prefer to retain the original audio files for future reference.
@@ -405,5 +421,5 @@ If you enjoy using the DnD Scrying Notetaker Bot and would like to buy me a coff
 ---
  
 ## License
-This project is licensed under the GNU General Public License v3.0. See the [LICENSE](https://github.com/thekannen/dnd-scrying-notetaker/tree/main?tab=GPL-3.0-1-ov-file) file for more details.
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](https://github.com/thekannen/MystiNote/tree/main?tab=GPL-3.0-1-ov-file) file for more details.
 Note: Portions of this code were developed with the assistance of OpenAI's ChatGPT. However, all rights to the code are retained by the repository owner, and this project is licensed in full under the terms of the GNU General Public License v3.0.
