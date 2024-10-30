@@ -1,15 +1,19 @@
 import { execFile } from 'child_process';
 import path from 'path';
+import os from 'os';
 import { getDirName } from '../utils/common.js';
 import { logger } from '../utils/logger.js';
 
 // Path to the Whisper Python script
 const pythonScript = path.join(getDirName(), '../whisper/whisperTranscribe.py');
 
+// Determine the Python command based on the OS
+const pythonCommand = os.platform() === 'win32' ? 'python' : 'python3';
+
 // Function to transcribe a single audio file using Whisper
 export async function transcribeFileWithWhisper(filePath, username) {
   return new Promise((resolve, reject) => {
-    execFile('python3', [pythonScript, filePath], (error, stdout, stderr) => {
+    execFile(pythonCommand, [pythonScript, filePath], (error, stdout, stderr) => {
       if (error) {
         logger(`Error during transcription for ${username}: ${error.message}`, 'error');
         reject(error);

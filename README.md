@@ -3,40 +3,33 @@
 A custom Discord bot designed for Dungeons & Dragons gameplay, utilizing the OpenAI Whisper API to record and transcribe voice channel interactions in real-time. This bot captures scrying sessions, summarizes them, and organizes logs for easy review.
 
 ## Table of Contents
-- [Disclaimer](#disclaimer)
-- [Features](#features)
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Server Recommendations](#server-recommendations)
-  - [Quick Install (via Bash Script)](#quick-install-via-bash-script)
-  - [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
-  - [Configure Environment Variables](#configure-environment-variables)
-  - [Configure conf.json Settings](#configure-confjson-settings)
-  - [Register the Commands](#register-the-commands)
-  - [Start the Bot](#start-the-bot)
-  - [Optional to Auto-Start with pm2](#optional-to-auto-start-with-pm2)
-- [Updates](#updates)
-- [conf.json Settings](#confjson-settings)
-  - [inactivityTimeoutMinutes](#inactivitytimeoutminutes)
-  - [sessionNameMaxLength](#sessionnamemaxlength)
-  - [whisperModel](#whispermodel)
-  - [openAIModel](#openaimodel)
+- [DnD Scrying Notetaker Bot](#dnd-scrying-notetaker-bot)
+  - [Table of Contents](#table-of-contents)
+  - [Disclaimer](#disclaimer)
+  - [Features](#features)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Server Recommendations](#server-recommendations)
+    - [Quick Install Scripts](#quick-install-scripts)
+      - [Ubuntu](#ubuntu)
+      - [Windows](#windows)
+    - [Manual Installation ( Ubuntu )](#manual-installation--ubuntu-)
+      - [Optional to auto-start with pm2](#optional-to-auto-start-with-pm2)
+    - [Manual Installation ( Windows )](#manual-installation--windows-)
+      - [Optional to auto-start with pm2](#optional-to-auto-start-with-pm2-1)
+  - [Updates](#updates)
+    - [`conf.json` Settings](#confjson-settings)
 - [Usage](#usage)
-  - [Commands](#commands)
-  - [Example Workflow](#example-workflow)
-- [Support This Project](#support-this-project)
-- [License](#license)
+    - [Commands](#commands)
+- [Example Workflow](#example-workflow)
+  - [Support This Project](#support-this-project)
+  - [License](#license)
+
 
 ---
 
 ## Disclaimer
-This application was created with extensive guidance from OpenAI's ChatGPT to help streamline the development process and refine functionality. Any issues or questions related to the code should be directed to the repository owner, as ChatGPT was used as a tool in the creation process and is not responsible for ongoing maintenance or support.
-
----
-
-## Features
-## Disclaimer
-This application was created with extensive guidance from OpenAI's ChatGPT to help streamline the development process and refine functionality. Any issues or questions related to the code should be directed to the repository owner, as ChatGPT was used as a tool in the creation process and is not responsible for ongoing maintenance or support.
+This application was developed with the assistance of OpenAI's ChatGPT to streamline the coding process and enhance functionality. While ChatGPT provided guidance during development, it is not involved in ongoing maintenance or support for this project. For any issues, questions, or feature requests, please contact the repository owner directly, as they are solely responsible for the code's upkeep and improvements.
 
 ---
 
@@ -60,27 +53,27 @@ This application was created with extensive guidance from OpenAI's ChatGPT to he
 1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
 2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
 
-Ensure you have the following on your server:
-- **Ubuntu**
-- **Ubuntu**
-- **Node.js** (version 20 or higher)
-- **FFmpeg**: Required for audio processing
-- **Git**
-
 ### Server Recommendations
 Your server resources will vary depending on the Whisper model you choose and how many recordings you want to process/keep.
-These are just general recommendations.
+These are just general recommendations. Read more about Whisper [here](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
 
-| OS | CPU Threads | RAM | Storage |
-| --- | --- | --- | --- |
-| Linux Ubuntu 24 LTS | 2-4 | 4-8 | 20-50Gb|
-| Windows TBD |
 
-### Quick Install (via Bash Script)
 
-Clone the repository and install dependencies by running the following command:
+| CPU Threads | RAM | Storage |
+| --- | --- | --- |
+| 2-4 | 4-8 | 20-50Gb|
+
+### Quick Install Scripts
+
+Clone the repository and install dependencies by running the following scripts:
+#### Ubuntu
    ```bash
    bash <(curl -s https://raw.githubusercontent.com/thekannen/dnd-scrying-notetaker/refs/heads/main/setup/setupDiscordBot.sh)
+   ```
+
+#### Windows
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('changepath'))
    ```
 
 ### Manual Installation ( Ubuntu )
@@ -96,6 +89,7 @@ If you prefer to install manually:
    cd ~
    git clone https://github.com/thekannen/dnd-scrying-notetaker.git
    cd dnd-scrying-notetaker
+   ```
 
 3. Install Node.js and npm (using NodeSource for the latest LTS version):
    ```bash
@@ -151,32 +145,118 @@ If you prefer to install manually:
      "openAIModel": "gpt-4-turbo"
       }
       ```
-11. Register the commands:
+12. Register the commands:
       ```bash
       node register_commands.js
       ```
 
-12. Start the bot:
+13. Start the bot:
       ```bash
       cd ~/dnd-scrying-notetaker/src
       node bot.js
       ```
 
-### Optional to auto-start with pm2
+#### Optional to auto-start with pm2
 1. Install pm2 to global install as signed in user:
    ```bash
    cd dnd-scrying-notetaker
    sudo npm install pm2 -g
+   ```
 
 2. Start the bot with pm2:
    Note: Change <user> to match your username.
    ```bash
    pm2 start /home/<user>/dnd-scrying-notetaker/src/bot.js --name "dnd-scrying-bot"
+   ```
 
-4. Save the pm2 process list and startup:
+3. Save the pm2 process list and startup:
    ```bash
    pm2 save
    pm2 startup
+   ```
+
+### Manual Installation ( Windows )
+If you prefer to install manually:
+1. Install server prerequisites:
+   - Open PowerShell as Administrator and run the following commands to install necessary tools using Chocolatey, a Windows package manager:
+      ```powershell
+      # Install Chocolatey if not already installed
+      Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+      # Install prerequisites
+      choco install -y git ffmpeg python nodejs-lts
+      ```
+
+2. Clone the Repository: 
+   - In PowerShell, run:
+      ```powershell
+      cd ~
+      git clone https://github.com/thekannen/dnd-scrying-notetaker.git
+      cd dnd-scrying-notetaker
+      ```
+
+3. Install Node.js Dependencies:
+   ```powershell
+   npm install
+   ```
+
+4. Install PyTorch (required for Whisper):
+   ```powershell
+   python -m pip install torch
+   ```
+
+5. Install Whisper:
+   ```powershell
+   python -m pip install git+https://github.com/openai/whisper.git
+   ```
+
+6. Verify Whisper Installation:
+   ```powershell
+   python -c "import whisper; print(whisper.load_model('base'))"
+   ```
+
+7. Configure Environment Variables; Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+      ```plaintext
+      APP_ID=<YOUR_APP_ID>
+      DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
+      PUBLIC_KEY=<YOUR_PUBLIC_KEY>
+      OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
+      ```
+8. Configure conf.json settings file:
+      ```json
+      {
+     "inactivityTimeoutMinutes": 5,
+     "sessionNameMaxLength": 50,
+     "whisperModel": "base",
+     "openAIModel": "gpt-4-turbo"
+      }
+      ```
+9. Register the commands:
+      ```powershell
+      node register_commands.js
+      ```
+
+10. Start the bot:
+      ```powershell
+      cd ~/dnd-scrying-notetaker/src
+      node bot.js
+      ```
+
+#### Optional to auto-start with pm2
+1. Install pm2 to global install as signed in user:
+   ```powershell
+   npm install pm2 -g
+   ```
+
+2. Start the bot with pm2:
+   Note: Change <user> to match your username.
+   ```powershell
+     pm2 start .\src\bot.js --name "dnd-scrying-bot"
+   ```
+
+3. Save the pm2 process list and startup:
+   ```powershell
+   pm2 save
    ```
 
 ---
@@ -304,13 +384,11 @@ Each command offers a unique interaction with the bot, allowing for seamless int
 
 ## Support This Project
 
-If you enjoy using the DnD Scrying Notetaker Bot and would like to buy me a coffee, below is a donation link! Otherwise, enjoy!
-
+If you enjoy using the DnD Scrying Notetaker Bot and would like to buy me a coffee, you can donate via PayPal.
 [Donate via PayPal](https://www.paypal.com/donate/?business=HDGMTT3QUAEJQ&no_recurring=1&currency_code=USD)
 
 ---
  
 ## License
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](https://github.com/thekannen/dnd-scrying-notetaker/tree/main?tab=GPL-3.0-1-ov-file) file for more details.
-   ```plaintext
-   This README provides clearer installation and usage instructions, and it aligns with GNU GPL v3 licensing. Let me know if you need further adjustments!"
+Note: Portions of this code were developed with the assistance of OpenAI's ChatGPT. However, all rights to the code are retained by the repository owner, and this project is licensed in full under the terms of the GNU General Public License v3.0.
