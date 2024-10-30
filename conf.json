@@ -1,4 +1,5 @@
 {
+  "botVersion": "1.0.0.0",
   "inactivityTimeoutMinutes": 5,
   "sessionNameMaxLength": 50,
   "whisperModel": "base",
