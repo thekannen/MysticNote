@@ -1,9 +1,9 @@
-# MystiNote
+# MysticNote
 
 A versatile Discord bot built to record, transcribe, and summarize voice channel interactions. Using OpenAI's Whisper API, this bot captures conversations, generates summaries, and organizes transcriptions for convenient playback and review. Whether for gaming sessions, meetings, or casual conversations, this bot provides transcription services and structured records of each session.
 
 ## Table of Contents
-- [MystiNote](#mystinote)
+- [MysticNote](#MysticNote)
   - [Table of Contents](#table-of-contents)
   - [Disclaimer](#disclaimer)
   - [Features](#features)
@@ -79,12 +79,12 @@ These are just general recommendations. Read more about Whisper [here](https://g
 Clone the repository and install dependencies by running the following scripts:
 #### Ubuntu
    ```bash
-   bash <(curl -s https://raw.githubusercontent.com/thekannen/MystiNote/refs/heads/main/setup/setupMystiNoteUbuntu.sh)
+   bash <(curl -s https://raw.githubusercontent.com/thekannen/MysticNote/refs/heads/main/setup/setupMysticNoteUbuntu.sh)
    ```
 
 #### Windows
    ```powershell
-   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('[changepath](https://raw.githubusercontent.com/thekannen/MystiNote/refs/heads/main/setup/setupMystiNoteWindows.ps1)'))
+   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('[changepath](https://raw.githubusercontent.com/thekannen/MysticNote/refs/heads/main/setup/setupMysticNoteWindows.ps1)'))
    ```
 
 ### Manual Installation ( Ubuntu )
@@ -98,8 +98,8 @@ If you prefer to install manually:
 2. Clone the Repository: 
    ```bash
    cd ~
-   git clone https://github.com/thekannen/MystiNote.git
-   cd MystiNote
+   git clone https://github.com/thekannen/MysticNote.git
+   cd MysticNote
    ```
 
 3. Install Node.js and npm (using NodeSource for the latest LTS version):
@@ -163,21 +163,21 @@ If you prefer to install manually:
 
 13. Start the bot:
       ```bash
-      cd ~/MystiNote/src
+      cd ~/MysticNote/src
       node bot.js
       ```
 
 #### Optional to auto-start with pm2
 1. Install pm2 to global install as signed in user:
    ```bash
-   cd MystiNote
+   cd MysticNote
    sudo npm install pm2 -g
    ```
 
 2. Start the bot with pm2:
    Note: Change <user> to match your username.
    ```bash
-   pm2 start /home/<user>/MystiNote/src/bot.js --name "MystiNote"
+   pm2 start /home/<user>/MysticNote/src/bot.js --name "MysticNote"
    ```
 
 3. Save the pm2 process list and startup:
@@ -202,8 +202,8 @@ If you prefer to install manually:
    - In PowerShell, run:
       ```powershell
       cd ~
-      git clone https://github.com/thekannen/MystiNote.git
-      cd MystiNote
+      git clone https://github.com/thekannen/MysticNote.git
+      cd MysticNote
       ```
 
 3. Install Node.js Dependencies:
@@ -249,7 +249,7 @@ If you prefer to install manually:
 
 10. Start the bot:
       ```powershell
-      cd ~/MystiNote/src
+      cd ~/MysticNote/src
       node bot.js
       ```
 
@@ -262,7 +262,7 @@ If you prefer to install manually:
 2. Start the bot with pm2:
    Note: Change <user> to match your username.
    ```powershell
-     pm2 start .\src\bot.js --name "MystiNote"
+     pm2 start .\src\bot.js --name "MysticNote"
    ```
 
 3. Save the pm2 process list and startup:
@@ -276,7 +276,7 @@ If you prefer to install manually:
 
 To update the bot, please pull from the git main repository:
    ```bash
-   cd ~/MystiNote
+   cd ~/MysticNote
    git pull origin main
    ```
 
@@ -415,11 +415,11 @@ Each command offers a unique interaction with the bot, allowing for seamless int
 
 ## Support This Project
 
-If you enjoy using MystiNote and would like to buy me a coffee, you can donate via PayPal.
+If you enjoy using MysticNote and would like to buy me a coffee, you can donate via PayPal.
 [Donate via PayPal](https://www.paypal.com/donate/?business=HDGMTT3QUAEJQ&no_recurring=1&currency_code=USD)
 
 ---
  
 ## License
-This project is licensed under the GNU General Public License v3.0. See the [LICENSE](https://github.com/thekannen/MystiNote/tree/main?tab=GPL-3.0-1-ov-file) file for more details.
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](https://github.com/thekannen/MysticNote/tree/main?tab=GPL-3.0-1-ov-file) file for more details.
 Note: Portions of this code were developed with the assistance of OpenAI's ChatGPT. However, all rights to the code are retained by the repository owner, and this project is licensed in full under the terms of the GNU General Public License v3.0.
