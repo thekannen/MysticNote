@@ -153,7 +153,9 @@ If you prefer to install manually:
      "inactivityTimeoutMinutes": 5,
      "sessionNameMaxLength": 50,
      "whisperModel": "base",
-     "openAIModel": "gpt-4-turbo"
+     "openAIModel": "gpt-4-turbo",
+     "saveRecordings": true, 
+     "audioQuality": "low"
       }
       ```
 12. Register the commands:
@@ -239,7 +241,9 @@ If you prefer to install manually:
      "inactivityTimeoutMinutes": 5,
      "sessionNameMaxLength": 50,
      "whisperModel": "base",
-     "openAIModel": "gpt-4-turbo"
+     "openAIModel": "gpt-4-turbo",
+     "saveRecordings": true, 
+     "audioQuality": "low"
       }
       ```
 9. Register the commands:
