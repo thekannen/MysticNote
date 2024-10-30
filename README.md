@@ -50,14 +50,9 @@ This application was developed with the assistance of OpenAI's ChatGPT to stream
 1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
 2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
 
-1. Discord Bot App ID, Public Key, and Token: Register a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and add it to your server.
-2. OpenAI API Key: Get an API key from [OpenAI](https://platform.openai.com/).
-
 ### Server Recommendations
 Your server resources will vary depending on the Whisper model you choose and how many recordings you want to process/keep.
 These are just general recommendations. Read more about Whisper [here](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
-
-
 
 | CPU Threads | RAM | Storage |
 | --- | --- | --- |
