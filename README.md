@@ -415,7 +415,7 @@ Each command offers a unique interaction with the bot, allowing for seamless int
 
 ## Support This Project
 
-If you enjoy using the DnD Scrying Notetaker Bot and would like to buy me a coffee, you can donate via PayPal.
+If you enjoy using MystiNote and would like to buy me a coffee, you can donate via PayPal.
 [Donate via PayPal](https://www.paypal.com/donate/?business=HDGMTT3QUAEJQ&no_recurring=1&currency_code=USD)
 
 ---
