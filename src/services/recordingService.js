@@ -93,22 +93,49 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 16000 });
   const timestamp = generateTimestamp();
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
+
+  // Determine audio settings based on quality level
+  let audioSettings;
+  switch (config.audioQuality) {
+    case 'high':
+      audioSettings = {
+        rate: '48000',    // High quality: 48 kHz
+        channels: '2',    // Stereo
+        codec: 'pcm_s16le' // 16-bit PCM for higher quality
+      };
+      break;
+    case 'medium':
+      audioSettings = {
+        rate: '24000',    // Medium quality: 24 kHz
+        channels: '1',    // Mono
+        codec: 'pcm_s16le' // 16-bit PCM
+      };
+      break;
+    case 'low':
+    default:
+      audioSettings = {
+        rate: '16000',    // Low quality: 16 kHz
+        channels: '1',    // Mono
+        codec: 'pcm_u8'   // 8-bit PCM for smaller size
+      };
+      break;
+  }
+
+  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: parseInt(audioSettings.channels), rate: parseInt(audioSettings.rate) });
 
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
-    // Use FFmpeg to capture a lower-quality mono recording at 16 kHz
     ffmpegProcesses[userId] = spawn('ffmpeg', [
       '-y',                      // Overwrite if file exists
       '-f', 's16le',             // PCM format
-      '-ar', '16000',            // Sample rate of 16 kHz
-      '-ac', '1',                // Mono channel
+      '-ar', audioSettings.rate, // Sample rate
+      '-ac', audioSettings.channels, // Channels
       '-i', 'pipe:0',            // Input from stdin
-      '-c:a', 'pcm_u8',          // 8-bit PCM format for reduced file size
+      '-c:a', audioSettings.codec, // Codec
       filePath                   // Output file path
     ]);
 

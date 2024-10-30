@@ -303,6 +303,21 @@ To update the bot, please pull from the git main repository:
    - **Options**: `"gpt-3.5-turbo"`, `"gpt-4"`, `"gpt-4-turbo"`  
    - **Example**: `"gpt-3.5-turbo"` is suitable if you require a faster, more cost-effective model for summaries.
 
+5. **`saveRecordings`**  
+   Determines whether to keep or delete audio recordings after they have been successfully transcribed and summarized. Set to false if you want to automatically delete recordings, reducing storage use, or set to true if you prefer to retain the original audio files for future reference.
+
+   - **Type**: Boolean  
+   - **Default**: `"true"`  
+   - **Example**: `"False` if you want to automatically delete recordings after they have been transcribed.
+
+6. **`audioQuality`**  
+   Controls the quality of audio recordings for transcription, with options to balance between audio clarity and file size. Higher quality settings provide clearer audio but increase storage use. Lower quality is generally sufficient for transcription accuracy while minimizing file size.
+
+   - **Type**: String  
+   - **Default**: `"low"`  
+   - **Options**: `"low"`, `"medium"`, `"high"`  
+   - **Example**: `"high"` for maximum audio clarity if storage space is not a concern, or "low" to minimize file size while maintaining transcribable quality.
+
 ---
 
 # Usage

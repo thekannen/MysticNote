@@ -4,6 +4,7 @@ import { transcribeFileWithWhisper } from './whisperService.js';
 import { generateSummary } from './summaryService.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import { logger } from '../utils/logger.js';
+import config from '../config/config.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
@@ -52,6 +53,16 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
   // Generate a summary using the SummaryService
   const summary = await generateSummary(combinedTranscription, sessionName);
+
+    // If saveRecordings is set to false, delete the recordings after generating the summary
+    if (summary && !config.saveRecordings) {
+      for (const file of sessionFiles) {
+        const filePath = path.join(sessionFolderPath, file);
+        fs.unlinkSync(filePath);
+        logger(`Deleted recording file: ${filePath}`, 'info');
+      }
+    }
+
   return { summary, transcriptionFile: finalFilePath };
 }
 

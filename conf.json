@@ -2,5 +2,7 @@
   "inactivityTimeoutMinutes": 5,
   "sessionNameMaxLength": 50,
   "whisperModel": "base",
-  "openAIModel": "gpt-4-turbo"
+  "openAIModel": "gpt-4-turbo",
+  "saveRecordings": true, 
+  "audioQuality": "low"
 }
