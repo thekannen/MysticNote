@@ -3,7 +3,7 @@ import fs from 'fs';
 import prism from 'prism-media';
 import path from 'path';
 import config from '../config/config.js';
-import { logger } from '../utils/logger.js';
+import { verboseLog, logger } from '../utils/logger.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
@@ -24,11 +24,13 @@ const INACTIVITY_LIMIT = config.inactivityTimeoutMinutes * 60 * 1000;
 export function setConnection(conn) {
   connection = conn;
   logger('Connection established and stored in recordingService', 'info');
+  verboseLog(`Connection details: ${JSON.stringify(conn)}`);
   resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Resets the timer when a connection is established
 }
 
 // Retrieves the active connection for a given guild
 export function getActiveConnection(guildId) {
+  verboseLog(`Getting active connection for guildId: ${guildId}`);
   return connection?.joinConfig.guildId === guildId ? connection : null;
 }
 
@@ -59,17 +61,41 @@ async function endScryingSession() {
 
 // Helper to retrieve the active scrying channel ID
 export function getScryingChannelId() {
+  verboseLog(`Getting active scrying channel ID: ${scryingChannelId}`);
   return scryingChannelId;
 }
 
 // Sets the session name for the current recording
 export function setSessionName(sessionName) {
   currentSessionName = sessionName;
+  verboseLog(`Session name set to: ${currentSessionName}`);
 }
 
 // Retrieves the current session name
 export function getSessionName() {
+  verboseLog(`Retrieving current session name: ${currentSessionName}`);
   return currentSessionName;
+}
+
+// Toggles scrying session state and inactivity timer
+export function setScryingSessionActive(isActive, channelId = null) {
+  isScryingSessionActive = isActive;
+  scryingChannelId = channelId;
+
+  logger(`Scrying session active: ${isActive}`, 'info');
+  verboseLog(`Scrying session details: isActive=${isActive}, channelId=${channelId}`);
+
+  if (isActive) {
+    resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
+  } else {
+    clearInactivityTimer(); // Ensures the timer stops when scrying ends
+  }
+}
+
+// Checks if the scrying session is currently active
+export function isScryingSessionOngoing() {
+  verboseLog(`Checking if scrying session is ongoing: ${isScryingSessionActive}`);
+  return isScryingSessionActive;
 }
 
 // Starts recording for a user with optimized audio settings
@@ -124,6 +150,7 @@ export async function startRecording(conn, userId, username) {
   }
 
   const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: parseInt(audioSettings.channels), rate: parseInt(audioSettings.rate) });
+  verboseLog(`Audio settings: ${JSON.stringify(audioSettings)}, file path: ${filePath}`);
 
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
@@ -210,16 +237,4 @@ export async function stopRecording(userId = null) {
       });
     }
   });
-}
-
-// Toggles scrying session state and inactivity timer
-export function setScryingSessionActive(isActive, channelId = null) {
-  isScryingSessionActive = isActive;
-  scryingChannelId = channelId;
-  isActive ? resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT) : clearInactivityTimer();
-}
-
-// Checks if the scrying session is currently active
-export function isScryingSessionOngoing() {
-  return isScryingSessionActive;
 }

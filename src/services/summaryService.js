@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import config from '../config/config.js';
 
@@ -17,7 +17,9 @@ const modelTokenLimits = {
 // Determine API limits based on the chosen model
 function getApiLimits(modelName) {
   const defaultSettings = { maxTokens: 4096, maxWordsPerChunk: 3072 };
-  return modelTokenLimits[modelName] || defaultSettings;
+  const limits = modelTokenLimits[modelName] || defaultSettings;
+  verboseLog(`API limits for ${modelName}: ${JSON.stringify(limits)}`);
+  return limits;
 }
 
 const { maxTokens: MAX_API_TOKENS, maxWordsPerChunk: MAX_WORDS_PER_CHUNK } = getApiLimits(config.openAIModel || 'gpt-4-turbo');
@@ -35,8 +37,9 @@ function splitTextIntoSentenceChunks(text, maxWords) {
     // If adding this sentence exceeds maxWords, finalize the current chunk
     if (wordCount + sentenceWords > maxWords) {
       chunks.push(currentChunk.join(' ').trim());
-      currentChunk = [];
-      wordCount = 0;
+      verboseLog(`Created chunk with ${wordCount} words`);
+      currentChunk = []; // Reset chunk
+      wordCount = 0; // Reset word count
     }
 
     currentChunk.push(sentence);
@@ -46,6 +49,7 @@ function splitTextIntoSentenceChunks(text, maxWords) {
   // Push any remaining content as the last chunk
   if (currentChunk.length > 0) {
     chunks.push(currentChunk.join(' ').trim());
+    verboseLog(`Final chunk created with ${wordCount} words`);
   }
 
   return chunks;
@@ -74,6 +78,8 @@ export async function generateSummary(transcriptionText, sessionName) {
       - etc.
     `;
 
+    verboseLog(`Sending API request for chunk with content length: ${chunk.length}`);
+
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -97,7 +103,7 @@ export async function generateSummary(transcriptionText, sessionName) {
         chunkSummaries.push(summaryText);
         chunkKeyEvents.push(...keyEvents.map(event => event.trim()));
 
-        logger(`Chunk summary generated: ${chunkSummary}`, 'info');
+        verboseLog(`Chunk summary generated: ${chunkSummary}`);
       } else {
         logger('No summary available for this chunk.', 'error');
       }
@@ -121,6 +127,8 @@ export async function generateSummary(transcriptionText, sessionName) {
     Key Events:
   `;
 
+  verboseLog(`Sending final API request for combined summary`);
+
   let finalSummary;
   try {
     const finalResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -143,7 +151,8 @@ export async function generateSummary(transcriptionText, sessionName) {
       const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
       saveSummaryToFile(sessionTranscriptsDir, sessionName, finalSummary);
 
-      logger(`Final combined summary generated.`, 'info');
+      verboseLog(`Final combined summary generated.`);
+      logger(`Final combined summary generated successfully.`, 'info');
     } else {
       finalSummary = 'No final summary available';
       logger('Failed to generate a final combined summary.', 'error');
@@ -164,7 +173,8 @@ function saveSummaryToFile(sessionTranscriptsDir, sessionName, summary) {
 
   const localTimestamp = generateTimestamp();
   const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
-  
+
   fs.writeFileSync(summaryFilePath, summary);
   logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
+  verboseLog(`Summary saved to file path: ${summaryFilePath}`);
 }

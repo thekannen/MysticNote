@@ -43,10 +43,14 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
     }
     logger('Stopping recording and processing transcription...', 'info');
 
-    // Stop all ongoing recordings
-    await stopRecording();
+    // Stop active recordings and transcribe session
+    await stopRecording(userId); 
+    
+    // Clear session state and stop inactivity timer immediately
+    setScryingSessionActive(false);
+    setSessionName(null);
 
-    // Process transcription and retrieve the summary and file path
+    // Proceed with transcription and summary generation
     const { summary, transcriptionFile } = await transcribeAndSaveSessionFolder(sessionName);
 
     // Notify the user with the transcription summary or an error message if the summary is unavailable
@@ -65,11 +69,6 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
       }
       logger('Transcription or summary failed.', 'error');
     }
-
-    // Clear session state to prevent further recording attempts in this session
-    setSessionName(null);
-    setScryingSessionActive(false);
-
   } catch (error) {
     // Log the error and notify the user if an issue occurs during transcription
     logger(`Error during stop and transcribe process: ${error.message}`, 'error');

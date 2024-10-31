@@ -12,6 +12,7 @@ import { stopRecordingAndTranscribe } from './commands/endScrying.js';
 import { consultTheTextsHandler } from './commands/consultTexts.js';
 import { revealSummary, retrieveFullTranscription } from './commands/summary.js';
 import { deleteSessionHandler, purgeHandler } from './commands/deletePurge.js';
+import { processSessionHandler } from './commands/processSession.js';
 
 // Initialize the Discord client with required intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
@@ -91,6 +92,10 @@ client.on('interactionCreate', async (interaction) => {
       case 'delete_session':
         logger('Handling command: delete_session', 'info');
         await deleteSessionHandler(interaction);
+        break;
+      case 'process_session':
+        logger('Handling command: process_session', info);
+        await processSessionHandler(interaction);
         break;
       case 'purge':
         logger('Handling command: purge', 'info');

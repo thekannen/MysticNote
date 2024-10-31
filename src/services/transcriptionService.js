@@ -3,7 +3,7 @@ import path from 'path';
 import { transcribeFileWithWhisper } from './whisperService.js';
 import { generateSummary } from './summaryService.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 import config from '../config/config.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
@@ -12,7 +12,7 @@ const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 // Function to transcribe all audio files in a session folder and save the transcriptions
 export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFolderPath = path.join(recordingsDir, sessionName);
-  
+
   if (!fs.existsSync(sessionFolderPath)) {
     logger(`Session folder not found: ${sessionFolderPath}`, 'error');
     return { summary: null, transcriptionFile: null };
@@ -22,15 +22,17 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
   if (!fs.existsSync(sessionTranscriptsDir)) {
     fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+    verboseLog(`Created directory for transcripts: ${sessionTranscriptsDir}`);
   }
 
   let transcriptions = [];
 
-  // Loop through each file, transcribing and adding timestamps
   for (const file of sessionFiles) {
     const filePath = path.join(sessionFolderPath, file);
     const username = path.basename(file).split('_')[1];
     const fileCreationTime = fs.statSync(filePath).birthtime;
+
+    verboseLog(`Starting transcription for file: ${filePath}, created at: ${fileCreationTime}`);
 
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {
@@ -40,6 +42,9 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
         username,
         text: segment.text
       })));
+      verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
+    } else {
+      verboseLog(`No transcription segments found for ${filePath}`, 'warn');
     }
   }
 
@@ -51,17 +56,16 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
   logger(`Full transcription saved as ${finalFilePath}`, 'info');
 
-  // Generate a summary using the SummaryService
   const summary = await generateSummary(combinedTranscription, sessionName);
 
-    // If saveRecordings is set to false, delete the recordings after generating the summary
-    if (summary && !config.saveRecordings) {
-      for (const file of sessionFiles) {
-        const filePath = path.join(sessionFolderPath, file);
-        fs.unlinkSync(filePath);
-        logger(`Deleted recording file: ${filePath}`, 'info');
-      }
+  // If saveRecordings is set to false, delete the recordings after generating the summary
+  if (summary && !config.saveRecordings) {
+    for (const file of sessionFiles) {
+      const filePath = path.join(sessionFolderPath, file);
+      fs.unlinkSync(filePath);
+      logger(`Deleted recording file: ${filePath}`, 'info');
     }
+  }
 
   return { summary, transcriptionFile: finalFilePath };
 }
@@ -84,6 +88,7 @@ function aggregateTranscriptions(transcriptions) {
     } else {
       if (currentSpeaker) {
         aggregatedTranscriptions.push({ start: currentStart, end: currentEnd, username: currentSpeaker, text: currentText.trim() });
+        verboseLog(`Aggregated transcription for ${currentSpeaker} from ${currentStart} to ${currentEnd}`);
       }
       currentSpeaker = segment.username;
       currentText = segment.text;
@@ -92,6 +97,7 @@ function aggregateTranscriptions(transcriptions) {
     }
     if (index === transcriptions.length - 1) {
       aggregatedTranscriptions.push({ start: currentStart, end: currentEnd, username: currentSpeaker, text: currentText.trim() });
+      verboseLog(`Final aggregated transcription for ${currentSpeaker} from ${currentStart} to ${currentEnd}`);
     }
   });
   return aggregatedTranscriptions;

@@ -39,10 +39,6 @@ export async function transcribeAudioHandler(interaction) {
       return;
     }
 
-    // Create directories for the session's recordings and transcripts
-    fs.mkdirSync(sessionFolder, { recursive: true });
-    fs.mkdirSync(transcriptFolder, { recursive: true });
-
     // Defer reply as the bot's setup for recording might take time
     await interaction.deferReply();
 
@@ -59,6 +55,10 @@ export async function transcribeAudioHandler(interaction) {
     // Retrieve members in the voice channel for recording setup
     const members = interaction.member.voice.channel.members;
     const timestamp = generateTimestamp();
+
+    // Create directories for the session's recordings and transcripts
+    fs.mkdirSync(sessionFolder, { recursive: true });
+    fs.mkdirSync(transcriptFolder, { recursive: true });
 
     // Loop through each member in the voice channel to initiate recording
     for (const [memberId, member] of members) {

@@ -109,6 +109,21 @@ const PURGE = {
   ],
 };
 
+// Command to delete a specific session's recordings and transcripts
+const PROCESS_SESSION = {
+  name: 'process_session',
+  description: 'Transcribe and summarize a session. Used for debugging!',
+  type: 1,
+  options: [
+    {
+      name: 'session',
+      description: 'The name of the session you wish to process.',
+      type: 3,
+      required: true,
+    },
+  ],
+};
+
 // Install the commands globally using the Discord application ID
 InstallGlobalCommands(process.env.APP_ID, [
   GAZE_COMMAND,
@@ -119,5 +134,6 @@ InstallGlobalCommands(process.env.APP_ID, [
   REVEAL_SUMMARY_COMMAND,
   COMPLETE_VISION_COMMAND,
   DELETE_SESSION,
+  PROCESS_SESSION,
   PURGE,
 ]);

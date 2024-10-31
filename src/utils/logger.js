@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { generateTimestamp } from './common.js';
+import config from '../config/config.js';
 
 // Get the hostname of the current system (useful for log identification)
 const hostname = os.hostname();
@@ -31,6 +32,12 @@ export function logger(message, type = 'info') {
 
   // Append the log entry to the daily log file, creating a new line for each entry
   fs.appendFileSync(logFilePath, logEntry + '\n', 'utf8');
+}
+
+export function verboseLog(message) {
+  if (config.verbose) {
+    logger(message, 'verbose');
+  }
 }
 
 // Usage examples:
