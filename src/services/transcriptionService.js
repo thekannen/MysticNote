@@ -21,34 +21,34 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFiles = fs.readdirSync(sessionFolderPath).filter(file => file.endsWith('.wav'));
   const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
   if (!fs.existsSync(sessionTranscriptsDir)) {
-    fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
-    verboseLog(`Created directory for transcripts: ${sessionTranscriptsDir}`);
+      fs.mkdirSync(sessionTranscriptsDir, { recursive: true });
+      verboseLog(`Created directory for transcripts: ${sessionTranscriptsDir}`);
   }
-
+  
   let transcriptions = [];
-
+  
   for (const file of sessionFiles) {
-    const filePath = path.join(sessionFolderPath, file);
-    const username = path.basename(file).split('_')[1];
-
-    // Extract the timestamp from the filename
-    const timestampString = path.basename(file).split('_').slice(-1)[0].replace('.wav', '');
-    const fileStartTime = new Date(timestampString.replace(/-/g, ':').replace('T', ' '));
-
-    verboseLog(`Starting transcription for file: ${filePath}, starting at: ${fileStartTime}`);
-
-    const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
-    if (transcriptionSegments) {
-      transcriptions.push(...transcriptionSegments.map(segment => ({
-        start: new Date(fileStartTime.getTime() + segment.start * 1000),
-        end: new Date(fileStartTime.getTime() + segment.end * 1000),
-        username,
-        text: segment.text
-      })));
-      verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
-    } else {
-      verboseLog(`No transcription segments found for ${filePath}`, 'warn');
-    }
+      const filePath = path.join(sessionFolderPath, file);
+      const username = path.basename(file).split('_')[1];
+      
+      // Extract timestamp from filename
+      const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop();
+      const fileCreationTime = new Date(fileTimestamp.replace(/-/g, ':').replace('T', ' '));
+      
+      verboseLog(`Starting transcription for file: ${filePath}, created at: ${fileCreationTime}`);
+  
+      const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
+      if (transcriptionSegments) {
+          transcriptions.push(...transcriptionSegments.map(segment => ({
+              start: new Date(fileCreationTime.getTime() + segment.start * 1000),
+              end: new Date(fileCreationTime.getTime() + segment.end * 1000),
+              username,
+              text: segment.text
+          })));
+          verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
+      } else {
+          verboseLog(`No transcription segments found for ${filePath}`, 'warn');
+      }
   }
 
   const aggregatedTranscriptions = aggregateTranscriptions(transcriptions);
