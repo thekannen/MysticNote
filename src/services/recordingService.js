@@ -24,10 +24,14 @@ const INACTIVITY_LIMIT = config.inactivityTimeoutMinutes * 60 * 1000;
 export function setConnection(conn) {
   connection = conn;
   logger('Connection established and stored in recordingService', 'info');
-  verboseLog(`Connection details: ${JSON.stringify(conn, (key, value) => {
-    if (key.startsWith('_')) return undefined; // Avoids circular structures
-    return value;
-  })}`);
+
+  // Log specific properties to avoid circular references
+  verboseLog(`Connection details: {
+    guildId: ${conn?.joinConfig?.guildId},
+    channelId: ${conn?.joinConfig?.channelId},
+    receiverStatus: ${conn?.receiver ? "active" : "inactive"}
+  }`);
+
   resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Resets the timer when a connection is established
 }
 
