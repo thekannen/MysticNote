@@ -62,7 +62,7 @@ export function getDirName() {
 }
 
 // Generates a timestamp based on the server's local timezone for consistent file naming
-export function generateTimestamp(forLogging = false, forRecording = false) {
+export function generateTimestamp(forLogging = false) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -74,9 +74,6 @@ export function generateTimestamp(forLogging = false, forRecording = false) {
 
   if (forLogging) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
-  if (forRecording) {
-    return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}-${milliseconds}`;
   }
   return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for general file naming
 }

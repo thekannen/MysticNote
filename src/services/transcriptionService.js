@@ -32,23 +32,8 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     const username = path.basename(file).split('_')[1];
 
     // Extract timestamp from filename
-      const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop();
-
-      // Parse components
-      const [datePart, timePart, milliseconds] = fileTimestamp.split('T');
-      const [year, month, day] = datePart.split('-');
-      const [hour, minute, second] = timePart.split('-');
-
-      // Construct date
-      const fileCreationTime = new Date(
-          year,
-          parseInt(month) - 1, // Month is zero-based in JavaScript Date
-          day,
-          hour,
-          minute,
-          second,
-          milliseconds
-      );
+    const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop();
+    const fileCreationTime = new Date(fileTimestamp.replace(/-/g, ':').replace('T', ' '));
 
     verboseLog(`Starting transcription for file: ${filePath}, File Stamp: ${fileTimestamp} created at: ${fileCreationTime}`);
 

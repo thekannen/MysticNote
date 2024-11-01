@@ -126,7 +126,7 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const timestamp = generateTimestamp(false, true); // Timestamp with millisecond precision
+  const timestamp = generateTimestamp(); // Timestamp with millisecond precision
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
   // Determine audio settings based on quality level
