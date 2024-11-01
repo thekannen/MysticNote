@@ -119,7 +119,7 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const timestamp = generateTimestamp();
+  const timestamp = generateTimestamp(false, true); // Millisecond-precision timestamp for recording
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
   // Determine audio settings based on quality level
@@ -149,13 +149,18 @@ export async function startRecording(conn, userId, username) {
       break;
   }
 
-  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: parseInt(audioSettings.channels), rate: parseInt(audioSettings.rate) });
+  const opusDecoder = new prism.opus.Decoder({
+    frameSize: 960,
+    channels: parseInt(audioSettings.channels),
+    rate: parseInt(audioSettings.rate)
+  });
   verboseLog(`Audio settings: ${JSON.stringify(audioSettings)}, file path: ${filePath}`);
 
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
+    // Spawn an FFmpeg process to save the output as a single, continuous file for the user
     ffmpegProcesses[userId] = spawn('ffmpeg', [
       '-y',                      // Overwrite if file exists
       '-f', 's16le',             // PCM format
@@ -170,6 +175,13 @@ export async function startRecording(conn, userId, username) {
 
     // Resets inactivity timer with each audio packet received
     pcmStream.on('data', () => resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT));
+
+    // Insert silence when user is not speaking
+    userStream.on('end', () => {
+      const silence = Buffer.alloc(parseInt(audioSettings.rate) * parseInt(audioSettings.channels) * 2, 0); // Adjust buffer size as needed
+      ffmpegProcesses[userId].stdin.write(silence);
+      verboseLog(`Inserting silence for user ${username} to maintain continuity.`, 'info');
+    });
 
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');

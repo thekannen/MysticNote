@@ -62,7 +62,7 @@ export function getDirName() {
 }
 
 // Generates a timestamp based on the server's local timezone for consistent file naming
-export function generateTimestamp(forLogging = false) {
+export function generateTimestamp(forLogging = false, forRecording = false) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -70,11 +70,15 @@ export function generateTimestamp(forLogging = false) {
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
 
   if (forLogging) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
-  return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for file naming
+  if (forRecording) {
+    return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}-${milliseconds}`;
+  }
+  return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for general file naming
 }
 
 // Deletes all files matching a specific pattern in the current directory
