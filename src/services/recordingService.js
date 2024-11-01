@@ -24,7 +24,10 @@ const INACTIVITY_LIMIT = config.inactivityTimeoutMinutes * 60 * 1000;
 export function setConnection(conn) {
   connection = conn;
   logger('Connection established and stored in recordingService', 'info');
-  verboseLog(`Connection details: ${JSON.stringify(conn)}`);
+  verboseLog(`Connection details: ${JSON.stringify(conn, (key, value) => {
+    if (key.startsWith('_')) return undefined; // Avoids circular structures
+    return value;
+  })}`);
   resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Resets the timer when a connection is established
 }
 
@@ -98,7 +101,7 @@ export function isScryingSessionOngoing() {
   return isScryingSessionActive;
 }
 
-// Starts recording for a user with optimized audio settings
+// Starts recording for a user with optimized audio settings and maintains continuous audio for synchronization
 export async function startRecording(conn, userId, username) {
   if (!conn || !conn.receiver) {
     logger("Connection is not established or lacks a valid receiver. Cannot start recording.", 'error');
@@ -119,7 +122,7 @@ export async function startRecording(conn, userId, username) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const timestamp = generateTimestamp(false, true); // Millisecond-precision timestamp for recording
+  const timestamp = generateTimestamp(false, true); // Timestamp with millisecond precision
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
   // Determine audio settings based on quality level
@@ -176,11 +179,12 @@ export async function startRecording(conn, userId, username) {
     // Resets inactivity timer with each audio packet received
     pcmStream.on('data', () => resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT));
 
-    // Insert silence when user is not speaking
-    userStream.on('end', () => {
-      const silence = Buffer.alloc(parseInt(audioSettings.rate) * parseInt(audioSettings.channels) * 2, 0); // Adjust buffer size as needed
-      ffmpegProcesses[userId].stdin.write(silence);
-      verboseLog(`Inserting silence for user ${username} to maintain continuity.`, 'info');
+    // Add silence when the user is not speaking to maintain track continuity
+    pcmStream.on('end', () => {
+      const silenceDuration = parseInt(audioSettings.rate) * parseInt(audioSettings.channels) * 2; // Adjust silence duration
+      const silenceBuffer = Buffer.alloc(silenceDuration, 0); // Silence buffer
+      ffmpegProcesses[userId].stdin.write(silenceBuffer); // Write silence
+      verboseLog(`Inserting silence for user ${username} to maintain continuity.`);
     });
 
     ffmpegProcesses[userId].on('close', () => {
