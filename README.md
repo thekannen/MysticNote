@@ -1,3 +1,5 @@
+# This is still a work in progress and may not yet function as intended. If you've discovered this page, run at your own risk!
+
 # MysticNote
 
 A versatile Discord bot built to record, transcribe, and summarize voice channel interactions. Using OpenAI's Whisper API, this bot captures conversations, generates summaries, and organizes transcriptions for convenient playback and review. Whether for gaming sessions, meetings, or casual conversations, this bot provides transcription services and structured records of each session.
