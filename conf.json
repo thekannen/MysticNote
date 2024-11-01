@@ -6,5 +6,5 @@
   "openAIModel": "gpt-4-turbo",
   "saveRecordings": true, 
   "audioQuality": "low",
-  "verbose": false
+  "verbose": true
 }

@@ -33,7 +33,8 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
     // Extract timestamp from filename
     const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop();
-    const fileCreationTime = new Date(fileTimestamp.replace(/-/g, ':').replace('T', ' '));
+    const formattedTimestamp = fileTimestamp.replace(/-(\d+)$/, '.$1').replace(/-/g, ':').replace('T', ' ');
+    const fileCreationTime = new Date(formattedTimestamp);
 
     verboseLog(`Starting transcription for file: ${filePath}, File Stamp: ${fileTimestamp} created at: ${fileCreationTime}`);
 
