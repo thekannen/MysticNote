@@ -4,6 +4,7 @@ dotenv.config({ path: '../.env' });
 import { Client, GatewayIntentBits } from 'discord.js';
 import { logger } from './utils/logger.js'; 
 import { startRecording, stopRecording, isScryingSessionOngoing, getActiveConnection } from './services/recordingService.js';
+import { setClient } from './utils/common.js';
 
 import { joinVoiceChannelHandler } from './commands/gaze.js';
 import { leaveVoiceChannelHandler } from './commands/leave.js';
@@ -16,6 +17,8 @@ import { processSessionHandler } from './commands/processSession.js';
 
 // Initialize the Discord client with required intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+
+setClient(client);  // Store the client instance globally
 
 // Event triggered once the bot successfully logs in
 client.once('ready', () => {
@@ -31,7 +34,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     logger('Bot is not connected to the channel.', 'info');
     return;
   }
-
+  
   const userId = newState.member.id;
   const username = newState.member.user.username;
 

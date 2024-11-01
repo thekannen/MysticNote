@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDirName } from '../utils/common.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 // Define the directory where transcripts are stored
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
@@ -17,6 +17,7 @@ export async function revealSummary(interaction) {
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
       await interaction.reply('Please provide a session name to summarize.');
+      verboseLog('Please provide a session name to summarize.');
       return;
     }
 
@@ -24,6 +25,7 @@ export async function revealSummary(interaction) {
     const sessionTranscriptDir = path.join(transcriptsDir, sessionName);
     if (!fs.existsSync(sessionTranscriptDir)) {
       await interaction.reply(`No session named "${sessionName}" found.`);
+      verboseLog(`No session named "${sessionName}" found.`);
       return;
     }
 
@@ -33,6 +35,7 @@ export async function revealSummary(interaction) {
 
     if (summaryFiles.length === 0) {
       await interaction.reply('No summary found for the specified session.');
+      verboseLog('No summary found for the specified session.');
       return;
     }
 
@@ -48,8 +51,10 @@ export async function revealSummary(interaction) {
     // Send the summary content back to the user, if available
     if (summaryText) {
       await interaction.reply(`A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`);
+      verboseLog(`A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`);
     } else {
       await interaction.reply('Unable to reveal the summary of the vision.');
+      verboseLog('Unable to reveal the summary of the vision.');
     }
   } catch (error) {
     // Log and notify user if an error occurs
@@ -69,6 +74,7 @@ export async function retrieveFullTranscription(interaction) {
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
       await interaction.reply('Please provide a session name to retrieve the transcription.');
+      verboseLog('Please provide a session name to retrieve the transcription.');
       return;
     }
 
@@ -76,6 +82,7 @@ export async function retrieveFullTranscription(interaction) {
     const sessionTranscriptDir = path.join(transcriptsDir, sessionName);
     if (!fs.existsSync(sessionTranscriptDir)) {
       await interaction.reply(`No session named "${sessionName}" found.`);
+      verboseLog(`No session named "${sessionName}" found.`);
       return;
     }
 
@@ -85,6 +92,7 @@ export async function retrieveFullTranscription(interaction) {
 
     if (fullTranscriptFiles.length === 0) {
       await interaction.reply('No full transcription found for the specified session.');
+      verboseLog('No full transcription found for the specified session.');
       return;
     }
 
@@ -100,8 +108,10 @@ export async function retrieveFullTranscription(interaction) {
     // Send the full transcription content back to the user, if available
     if (transcriptionText) {
       await interaction.reply(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
+      verboseLog(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
     } else {
       await interaction.reply('Unable to retrieve the full transcription.');
+      verboseLog('Unable to retrieve the full transcription.');
     }
   } catch (error) {
     // Log and notify user if an error occurs

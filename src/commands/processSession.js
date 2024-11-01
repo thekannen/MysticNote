@@ -1,6 +1,6 @@
 import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
 import { setSessionName, setScryingSessionActive } from '../services/recordingService.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 /**
  * Processes transcription and sends the result to the specified channel.
@@ -13,6 +13,7 @@ export async function processSessionHandler(interaction) {
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
       await interaction.reply('Please provide a valid session name to reprocess.');
+      verboseLog('Please provide a valid session name to reprocess.');
       return;
     }
 

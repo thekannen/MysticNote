@@ -4,11 +4,12 @@ dotenv.config({ path: '../../.env' });
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from './logger.js'; // Custom logger utility
+import { logger, verboseLog } from './logger.js'; // Custom logger utility
 import config from '../config/config.js'; // Configuration file
 
 // Define the directory where recordings are saved
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
+let clientInstance = null;
 
 // Sends an API request to Discord with the specified endpoint and options
 export async function DiscordRequest(endpoint, options) {
@@ -70,11 +71,12 @@ export function generateTimestamp(forLogging = false) {
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
 
   if (forLogging) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
-  return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for file naming
+  return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`; // Suitable for general file naming
 }
 
 // Deletes all files matching a specific pattern in the current directory
@@ -91,13 +93,15 @@ export function cleanFiles(pattern) {
 export function validateSessionName(sessionName) {
   // Check if session name exceeds the max length set in config
   if (sessionName.length > config.sessionNameMaxLength) {
+    verboseLog(`Session name must be no more than ${config.sessionNameMaxLength} characters.`);
     return `Session name must be no more than ${config.sessionNameMaxLength} characters.`;
   }
 
   // Check if a session with this name already exists
   const sessionFolder = path.join(recordingsDir, sessionName);
   if (fs.existsSync(sessionFolder)) {
-    return 'A session with this name already exists. Please choose a different name.';
+    verboseLog('A session with this name already exists. Please choose a different name.');
+    return 'A session with this name already exists. Please choose a different name.';    
   }
 
   return true;
@@ -108,4 +112,17 @@ export function createSessionDirectory(sessionName) {
   const sessionFolder = path.join(recordingsDir, sessionName);
   fs.mkdirSync(sessionFolder, { recursive: true });
   logger(`Created directory for session: ${sessionName}`, 'info');
+}
+
+// Set the Discord client instance
+export function setClient(client) {
+  clientInstance = client;
+}
+
+// Get the Discord client instance
+export function getClient() {
+  if (!clientInstance) {
+    throw new Error("Client has not been initialized.");
+  }
+  return clientInstance;
 }

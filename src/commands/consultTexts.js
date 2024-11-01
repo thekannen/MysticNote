@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDirName } from '../utils/common.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 // Define the path to the transcripts directory
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
@@ -16,6 +16,7 @@ export async function consultTheTextsHandler(interaction) {
     // Check if the transcripts directory exists; if not, notify user of empty texts
     if (!fs.existsSync(transcriptsDir)) {
       await interaction.reply('No scrying sessions found. The texts are empty.');
+      verboseLog('No scrying sessions found. The texts are empty.');
       return;
     }
 
@@ -28,6 +29,7 @@ export async function consultTheTextsHandler(interaction) {
     // If no session folders are found, notify the user
     if (sessionFolders.length === 0) {
       await interaction.reply('No scrying sessions found. The texts are empty.');
+      verboseLog('No scrying sessions found. The texts are empty.');
       return;
     }
 

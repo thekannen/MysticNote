@@ -1,6 +1,6 @@
 import { joinVoiceChannel, VoiceConnectionStatus } from '@discordjs/voice';
 import { setConnection } from '../services/recordingService.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 /**
  * Handles the command to make the bot join the user's voice channel.
@@ -16,6 +16,7 @@ export async function joinVoiceChannelHandler(interaction) {
       content: 'Please join a voice channel in a server for the scrying to commence.',
       ephemeral: true, // Only the user issuing the command will see this message
     });
+    verboseLog('Please join a voice channel in a server for the scrying to commence.');
     return null;
   }
 
@@ -29,7 +30,7 @@ export async function joinVoiceChannelHandler(interaction) {
 
     // Log and set the connection when the bot is ready
     connection.on(VoiceConnectionStatus.Ready, () => {
-      logger('The bot has connected to the channel!', 'info');
+      logger('The bot has connected to the channel!', 'info');      
       setConnection(connection); // Store the connection for future use
     });
 

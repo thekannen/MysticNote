@@ -1,6 +1,6 @@
 import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
 import { stopRecording, getSessionName, setSessionName, setScryingSessionActive } from '../services/recordingService.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 /**
  * Stops all active recordings, processes transcription, and sends the result to the specified channel.
@@ -28,6 +28,7 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
       } else {
         await channel.send('No active scrying session found. Please start a session first.');
       }
+      verboseLog('No active scrying session found. Please start a session first.');
       setScryingSessionActive(false); // Update session status
       return;
     }
@@ -43,8 +44,8 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
     }
     logger('Stopping recording and processing transcription...', 'info');
 
-    // Stop active recordings and transcribe session
-    await stopRecording(userId); 
+    // Stop all active recordings
+    await stopRecording(); 
     
     // Clear session state and stop inactivity timer immediately
     setScryingSessionActive(false);

@@ -30,9 +30,12 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   for (const file of sessionFiles) {
     const filePath = path.join(sessionFolderPath, file);
     const username = path.basename(file).split('_')[1];
-    const fileCreationTime = fs.statSync(filePath).birthtime;
 
-    verboseLog(`Starting transcription for file: ${filePath}, created at: ${fileCreationTime}`);
+    // Extract timestamp from filename
+    const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop(); // Extract timestamp
+    const fileCreationTime = new Date(fileTimestamp.replace('T', ' ').replace(/-/g, ':')); // Replace `T` with space and `-` in time with `:`
+
+    verboseLog(`Starting transcription for file: ${filePath}, File Stamp: ${fileTimestamp} created at: ${fileCreationTime}`);
 
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {

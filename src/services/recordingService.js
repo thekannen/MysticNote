@@ -1,11 +1,11 @@
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import fs from 'fs';
 import prism from 'prism-media';
 import path from 'path';
 import config from '../config/config.js';
 import { verboseLog, logger } from '../utils/logger.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
-import { getDirName, generateTimestamp } from '../utils/common.js';
+import { getDirName, generateTimestamp, getClient } from '../utils/common.js';
 import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
 
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
@@ -13,6 +13,9 @@ const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 let connection = null;
 let ffmpegProcesses = {}; // Stores FFmpeg processes for each user
 let activeUsers = new Set(); // Tracks users actively being recorded
+let recordingStopping = false; // Add flag to signal recording closure
+let silenceWriterInterval = null; // Interval for writing silence
+let silenceCheckInterval = null;
 let scryingChannelId = null;
 let currentSessionName = null;
 let isScryingSessionActive = false;
@@ -20,12 +23,28 @@ let isScryingSessionActive = false;
 // Sets the inactivity limit in milliseconds based on configuration
 const INACTIVITY_LIMIT = config.inactivityTimeoutMinutes * 60 * 1000;
 
+export function resetSessionState() {
+  currentSessionName = null;
+  scryingChannelId = null;
+  isScryingSessionActive = false;
+  recordingStopping = false;
+  clearInactivityTimer(); // Ensure the timer is fully cleared
+  verboseLog('Session state reset for a fresh start.', 'info');
+}
+
 // Sets the active voice connection
 export function setConnection(conn) {
   connection = conn;
   logger('Connection established and stored in recordingService', 'info');
-  verboseLog(`Connection details: ${JSON.stringify(conn)}`);
-  resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Resets the timer when a connection is established
+
+  // Log specific properties to avoid circular references
+  verboseLog(`Connection details: {
+    guildId: ${conn?.joinConfig?.guildId},
+    channelId: ${conn?.joinConfig?.channelId},
+    receiverStatus: ${conn?.receiver ? "active" : "inactive"}
+  }`);
+
+  //resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Resets the timer when a connection is established
 }
 
 // Retrieves the active connection for a given guild
@@ -41,9 +60,10 @@ export function clearConnection() {
   clearInactivityTimer(); // Stops the timer when connection is cleared
 }
 
-// Ends the scrying session if no audio is detected, sends a notification to the channel
 async function endScryingSession() {
   if (isScryingSessionActive) {
+    verboseLog('Ending scrying session due to inactivity timer.');
+    const client = getClient();
     const channel = client.channels.cache.get(scryingChannelId);
 
     if (!channel) {
@@ -56,6 +76,20 @@ async function endScryingSession() {
 
     logger('Scrying session ended due to inactivity.', 'info');
     setScryingSessionActive(false);
+    clearSilenceCheckInterval(); // Ensure silenceCheckInterval is cleared
+  } else {
+    verboseLog('Attempted to end scrying session, but no active session found.');
+  }
+}
+
+// Helper function to clear the silence check interval
+function clearSilenceCheckInterval() {
+  if (silenceCheckInterval) {
+    clearInterval(silenceCheckInterval);
+    silenceCheckInterval = null;
+    verboseLog('Silence check interval cleared.');
+  } else {
+    verboseLog('No silence check interval to clear.');
   }
 }
 
@@ -86,9 +120,11 @@ export function setScryingSessionActive(isActive, channelId = null) {
   verboseLog(`Scrying session details: isActive=${isActive}, channelId=${channelId}`);
 
   if (isActive) {
+    verboseLog('Activating scrying session and setting inactivity timer.');
     resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
   } else {
-    clearInactivityTimer(); // Ensures the timer stops when scrying ends
+    verboseLog('Deactivating scrying session and clearing inactivity timer.');
+    clearInactivityTimer();
   }
 }
 
@@ -98,14 +134,13 @@ export function isScryingSessionOngoing() {
   return isScryingSessionActive;
 }
 
-// Starts recording for a user with optimized audio settings
 export async function startRecording(conn, userId, username) {
-  if (!conn || !conn.receiver) {
-    logger("Connection is not established or lacks a valid receiver. Cannot start recording.", 'error');
+  if (recordingStopping || !conn || !conn.receiver) {
+    logger("Recording is stopping or connection is not established. Cannot start recording.", 'error');
     return;
   }
 
-  await stopRecording(userId); // Stops any existing recording for the user if already active
+  await stopRecording(userId);
 
   if (!currentSessionName) {
     logger("No active session found. Cannot start recording.", 'error');
@@ -113,68 +148,129 @@ export async function startRecording(conn, userId, username) {
   }
 
   const sessionDir = path.join(recordingsDir, currentSessionName);
-
-  // Ensures the session directory exists
-  if (!fs.existsSync(sessionDir)) {
-    fs.mkdirSync(sessionDir, { recursive: true });
-  }
+  if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
   const timestamp = generateTimestamp();
   const filePath = path.join(sessionDir, `audio_${username}_${userId}_${timestamp}.wav`);
 
-  // Determine audio settings based on quality level
-  let audioSettings;
-  switch (config.audioQuality) {
-    case 'high':
-      audioSettings = {
-        rate: '48000',    // High quality: 48 kHz
-        channels: '2',    // Stereo
-        codec: 'pcm_s16le' // 16-bit PCM for higher quality
-      };
-      break;
-    case 'medium':
-      audioSettings = {
-        rate: '24000',    // Medium quality: 24 kHz
-        channels: '1',    // Mono
-        codec: 'pcm_s16le' // 16-bit PCM
-      };
-      break;
-    case 'low':
-    default:
-      audioSettings = {
-        rate: '16000',    // Low quality: 16 kHz
-        channels: '1',    // Mono
-        codec: 'pcm_u8'   // 8-bit PCM for smaller size
-      };
-      break;
-  }
+  const audioSettings = {
+    rate: config.audioQuality === 'high' ? '48000' : config.audioQuality === 'medium' ? '24000' : '16000',
+    channels: config.audioQuality === 'high' ? '2' : '1',
+    codec: 'pcm_s16le'
+  };
 
-  const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: parseInt(audioSettings.channels), rate: parseInt(audioSettings.rate) });
-  verboseLog(`Audio settings: ${JSON.stringify(audioSettings)}, file path: ${filePath}`);
+  const opusDecoder = new prism.opus.Decoder({
+    frameSize: 960,
+    channels: parseInt(audioSettings.channels),
+    rate: parseInt(audioSettings.rate)
+  });
+
+  const startTime = process.hrtime.bigint();
+
+  const debugInterval = setInterval(() => {
+    const elapsedTime = (process.hrtime.bigint() - startTime) / 1000000n;
+    const realElapsedSeconds = Number(elapsedTime) / 1000;
+    verboseLog(`Debug: Real elapsed time: ${realElapsedSeconds.toFixed(2)} seconds, Expected WAV file length: ~${realElapsedSeconds.toFixed(2)} seconds`);
+  }, 5000);
 
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
 
+    // Start FFmpeg with wallclock, -re, and aresample to handle silence automatically
     ffmpegProcesses[userId] = spawn('ffmpeg', [
-      '-y',                      // Overwrite if file exists
-      '-f', 's16le',             // PCM format
-      '-ar', audioSettings.rate, // Sample rate
-      '-ac', audioSettings.channels, // Channels
-      '-i', 'pipe:0',            // Input from stdin
-      '-c:a', audioSettings.codec, // Codec
-      filePath                   // Output file path
+      "-hide_banner",
+      "-y",
+      "-re", // Real-time input processing
+      "-use_wallclock_as_timestamps", "1",
+      "-f", "s16le",
+      "-ar", audioSettings.rate,
+      "-ac", audioSettings.channels,
+      "-i", "pipe:0",
+      "-af", "aresample=async=1:first_pts=0:min_comp=0.001:min_hard_comp=0.100",
+      "-ac", audioSettings.channels,
+      filePath
     ]);
 
     pcmStream.pipe(ffmpegProcesses[userId].stdin);
 
-    // Resets inactivity timer with each audio packet received
-    pcmStream.on('data', () => resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT));
+    // Initial silence buffer to initiate recording
+    const initialSilenceBuffer = Buffer.alloc(audioSettings.rate * audioSettings.channels / 100, 0); // ~10ms silence
+    ffmpegProcesses[userId].stdin.write(initialSilenceBuffer);
+    verboseLog('Initial silence buffer written to initiate recording.');
+
+    // Check if the file exists every 50ms and stop silence insertion if detected
+    const fileCheckInterval = setInterval(() => {
+      if (fs.existsSync(filePath)) {
+        clearInterval(fileCheckInterval);
+        verboseLog("WAV file detected. Stopping additional silence buffer insertion.");
+      } else {
+        ffmpegProcesses[userId].stdin.write(initialSilenceBuffer); // Keep writing initial silence if file doesn’t exist
+      }
+    }, 50);
+
+    let isAudioActive = false; // Track if audio is currently active
+    let silenceTailTimer = null; // Store the silence tail timer
+
+    pcmStream.on('data', (chunk) => {
+      const volume = Math.sqrt(chunk.reduce((sum, val) => sum + val * val, 0) / chunk.length);
+      const VOLUME_THRESHOLD = 75; // Adjust to capture more audio without triggering on background noise
+      const SILENCE_TAIL_DURATION = 1000; // 1000 ms buffer after last audio for smoother transitions
+
+      if (volume > VOLUME_THRESHOLD) {
+        // If audio resumes and was previously inactive, log and clear the silence timer
+        if (!isAudioActive) {
+          isAudioActive = true;
+          verboseLog(`Audio detected with volume: ${volume}`);
+        }
+
+        // Clear the silence tail timer if audio is active again
+        if (silenceTailTimer) {
+          clearTimeout(silenceTailTimer);
+          silenceTailTimer = null;
+        }
+      } else if (isAudioActive && !silenceTailTimer) {
+        // Start the silence tail timer when audio goes below threshold and no timer is set
+        silenceTailTimer = setTimeout(() => {
+          isAudioActive = false; // Mark audio as inactive after buffer period
+          silenceTailTimer = null; // Reset timer reference
+          verboseLog('Silence tail timer expired; treating as end of audio.');
+        }, SILENCE_TAIL_DURATION);
+      }
+    });
+
+    pcmStream.on('end', () => {
+      // Clear any remaining silence tail timer on stream end
+      if (silenceTailTimer) {
+        clearTimeout(silenceTailTimer);
+      }
+      clearInterval(debugInterval);
+      clearInactivityTimer();
+      pcmStream.removeAllListeners('data');
+    });
+
+    ffmpegProcesses[userId].on('error', (error) => {
+      logger(`FFmpeg error for user ${username}: ${error.message}`, 'error');
+      activeUsers.delete(userId);
+      clearInterval(fileCheckInterval);
+      clearInterval(debugInterval);
+    });
 
     ffmpegProcesses[userId].on('close', () => {
       logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
       activeUsers.delete(userId);
-      resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT); // Reset inactivity timer when recording finishes
+      clearInterval(fileCheckInterval);
+      clearInterval(debugInterval);
+
+      exec(`ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`, (err, stdout) => {
+        if (err) {
+          verboseLog(`Error retrieving WAV file duration: ${err.message}`);
+          return;
+        }
+        const wavDuration = parseFloat(stdout.trim());
+        const finalElapsedTime = Number(process.hrtime.bigint() - startTime) / 1000000000;
+        verboseLog(`Debug Complete: Real elapsed time: ${finalElapsedTime.toFixed(2)} seconds, Actual WAV file length: ${wavDuration.toFixed(2)} seconds`);
+      });
     });
 
     activeUsers.add(userId);
@@ -183,58 +279,42 @@ export async function startRecording(conn, userId, username) {
   }
 }
 
-// Stops recording for a specified user or all users, handling the cleanup of FFmpeg processes
+// In stopRecording, reset recordingStopping to false after all recordings end
 export async function stopRecording(userId = null) {
+  recordingStopping = true;
+
   return new Promise((resolve) => {
-    if (userId) {
-      if (!ffmpegProcesses[userId]) {
-        logger(`No active recording found for userId: ${userId}`, 'info');
-        resolve(null);
-        return;
-      }
+    const stopPromises = userId
+      ? [stopUserRecording(userId)]
+      : Object.keys(ffmpegProcesses).map((activeUserId) => stopUserRecording(activeUserId));
 
-      // Ends the recording process for a specific user after a brief delay
-      setTimeout(() => {
-        if (ffmpegProcesses[userId] && ffmpegProcesses[userId].stdin) {
-          ffmpegProcesses[userId].stdin.end();
-          ffmpegProcesses[userId].on('close', () => {
-            const filePath = ffmpegProcesses[userId].spawnargs[ffmpegProcesses[userId].spawnargs.length - 1];
-            logger(`Stopped recording for userId: ${userId}, saved as ${filePath}`, 'info');
-            delete ffmpegProcesses[userId];
-            activeUsers.delete(userId);
-            resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
-            resolve({ filePath, userId });
-          });
-        } else {
-          logger(`FFmpeg process for userId: ${userId} is no longer active.`, 'info');
-          resolve(null);
-        }
-      }, 500);
-    } else {
-      // Stops recording for all active users
-      const stopPromises = Object.keys(ffmpegProcesses).map(async (activeUserId) => {
-        return new Promise((stopResolve) => {
-          if (ffmpegProcesses[activeUserId] && ffmpegProcesses[activeUserId].stdin) {
-            ffmpegProcesses[activeUserId].stdin.end();
-            ffmpegProcesses[activeUserId].on('close', () => {
-              const filePath = ffmpegProcesses[activeUserId].spawnargs[ffmpegProcesses[activeUserId].spawnargs.length - 1];
-              logger(`Stopped recording for userId: ${activeUserId}, saved as ${filePath}`, 'info');
-              delete ffmpegProcesses[activeUserId];
-              activeUsers.delete(activeUserId);
-              stopResolve({ filePath, activeUserId });
-            });
-          } else {
-            logger(`FFmpeg process for userId: ${activeUserId} is no longer active.`, 'info');
-            stopResolve(null);
-          }
-        });
-      });
-
-      Promise.all(stopPromises).then((results) => {
-        logger('All active recordings have been stopped.', 'info');
+    Promise.all(stopPromises)
+      .then((results) => {
+        recordingStopping = false;
         clearInactivityTimer();
         resolve(results);
+      })
+      .finally(() => {
+        clearInactivityTimer();
+        recordingStopping = false;
+        verboseLog("Cleanup complete after stopping recordings.");
       });
+  });
+}
+
+// This helper function stops a single user's recording and returns a promise
+function stopUserRecording(userId) {
+  return new Promise((resolve) => {
+    if (ffmpegProcesses[userId]) {
+      ffmpegProcesses[userId].stdin.end(); // End input to FFmpeg
+      ffmpegProcesses[userId].on('close', () => { // Wait until FFmpeg process closes
+        logger(`Stopped recording for userId: ${userId}`, 'info');
+        delete ffmpegProcesses[userId]; // Clean up process reference
+        activeUsers.delete(userId); // Remove user from active users
+        resolve({ userId }); // Resolve the promise once stopped
+      });
+    } else {
+      resolve(null); // If no process exists, resolve immediately
     }
   });
 }

@@ -1,6 +1,6 @@
 import { getVoiceConnection } from '@discordjs/voice';
 import { isScryingSessionOngoing, clearConnection } from '../services/recordingService.js';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 /**
  * Handles the command to make the bot leave the current voice channel.
@@ -13,6 +13,7 @@ export async function leaveVoiceChannelHandler(interaction) {
     // Check if a scrying session is still active; if so, prevent leaving
     if (isScryingSessionOngoing()) {
       await interaction.reply('You must end the scrying session before I can leave. Use the `end_scrying` command.');
+      verboseLog('You must end the scrying session before I can leave. Use the `end_scrying` command.');
       return;
     }
 
@@ -24,9 +25,11 @@ export async function leaveVoiceChannelHandler(interaction) {
       connection.destroy(); // Disconnect the bot from the voice channel
       clearConnection(); // Clear the connection state in the application
       await interaction.reply('The scrying fades, and the vision dims as I depart…');
+      verboseLog('The scrying fades, and the vision dims as I depart…');
     } else {
       // Inform the user if the bot is not in a voice channel
       await interaction.reply("I'm not in a voice channel.");
+      verboseLog("I'm not in a voice channel.");
     }
   } catch (error) {
     // Log the error and inform the user if something goes wrong during the disconnection process

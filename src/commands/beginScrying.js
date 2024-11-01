@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import config from '../config/config.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
-import { startRecording, setSessionName, getActiveConnection, setScryingSessionActive } from '../services/recordingService.js';
-import { logger } from '../utils/logger.js';
+import { startRecording, setSessionName, getActiveConnection, setScryingSessionActive, resetSessionState } from '../services/recordingService.js';
+import { clearInactivityTimer } from '../utils/timers.js';
+import { logger, verboseLog } from '../utils/logger.js';
 
 // Directories for storing recordings and transcripts
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
@@ -16,16 +17,22 @@ const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
  */
 export async function transcribeAudioHandler(interaction) {
   try {
+    // Ensure fresh start by clearing any existing session state and timer
+    resetSessionState();
+    clearInactivityTimer();
+
     // Retrieve the session name provided by the user via the interaction command
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
       await interaction.reply('Please provide a session name to begin scrying.');
+      verboseLog('Please provide a session name to begin scrying.');
       return;
     }
 
     // Check if the session name exceeds the configured length
     if (sessionName.length > config.sessionNameMaxLength) {
       await interaction.reply(`Session name must be no more than ${config.sessionNameMaxLength} characters.`);
+      verboseLog(`Session name must be no more than ${config.sessionNameMaxLength} characters.`);
       return;
     }
 
@@ -36,6 +43,7 @@ export async function transcribeAudioHandler(interaction) {
     // Check for session folder existence to avoid name duplication
     if (fs.existsSync(sessionFolder) || fs.existsSync(transcriptFolder)) {
       await interaction.reply('A session with this name already exists. Please choose a different name.');
+      verboseLog('A session with this name already exists. Please choose a different name.');
       return;
     }
 
@@ -46,6 +54,7 @@ export async function transcribeAudioHandler(interaction) {
     const conn = getActiveConnection(interaction.guildId);
     if (!conn) {
       await interaction.editReply('The bot is not connected to a voice channel. Please use the `gaze` command first to connect.');
+      verboseLog('The bot is not connected to a voice channel. Please use the `gaze` command first to connect.');
       return;
     }
 

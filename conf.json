@@ -1,10 +1,10 @@
 {
   "botVersion": "1.0.0.1",
-  "inactivityTimeoutMinutes": 5,
+  "inactivityTimeoutMinutes": 1,
   "sessionNameMaxLength": 50,
-  "whisperModel": "base",
+  "whisperModel": "small",
   "openAIModel": "gpt-4-turbo",
   "saveRecordings": true, 
   "audioQuality": "low",
-  "verbose": false
+  "verbose": true
 }
