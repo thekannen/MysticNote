@@ -55,6 +55,18 @@ function splitTextIntoSentenceChunks(text, maxWords) {
   return chunks;
 }
 
+// Retry logic for API requests
+async function retryRequest(requestFn, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      verboseLog(`Attempt ${attempt} failed: ${error.message}`);
+      if (attempt === retries) throw new Error(`All ${retries} attempts failed`);
+    }
+  }
+}
+
 // Generates a summary and key events list from the transcription text using the OpenAI API
 export async function generateSummary(transcriptionText, sessionName) {
   const chunks = splitTextIntoSentenceChunks(transcriptionText, MAX_WORDS_PER_CHUNK);
@@ -81,7 +93,7 @@ export async function generateSummary(transcriptionText, sessionName) {
     verboseLog(`Sending API request for chunk with content length: ${chunk.length}`);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await retryRequest(() => fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -93,7 +105,7 @@ export async function generateSummary(transcriptionText, sessionName) {
           max_tokens: MAX_API_TOKENS,
           temperature: 0.5,
         }),
-      });
+      }));
 
       const data = await response.json();
       if (data.choices && data.choices[0]?.message?.content) {
@@ -108,7 +120,7 @@ export async function generateSummary(transcriptionText, sessionName) {
         logger('No summary available for this chunk.', 'error');
       }
     } catch (apiError) {
-      logger(`Failed to generate summary for chunk: ${apiError.message}`, 'error');
+      logger(`Failed to generate summary for chunk after retries: ${apiError.message}`, 'error');
     }
   }
 
@@ -131,7 +143,7 @@ export async function generateSummary(transcriptionText, sessionName) {
 
   let finalSummary;
   try {
-    const finalResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const finalResponse = await retryRequest(() => fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -143,7 +155,7 @@ export async function generateSummary(transcriptionText, sessionName) {
         max_tokens: MAX_API_TOKENS,
         temperature: 0.5,
       }),
-    });
+    }));
 
     const finalData = await finalResponse.json();
     if (finalData.choices && finalData.choices[0]?.message?.content) {
@@ -159,7 +171,7 @@ export async function generateSummary(transcriptionText, sessionName) {
     }
   } catch (apiError) {
     finalSummary = 'Final summary generation failed';
-    logger(`Failed to generate final summary: ${apiError.message}`, 'error');
+    logger(`Failed to generate final summary after retries: ${apiError.message}`, 'error');
   }
 
   return finalSummary;

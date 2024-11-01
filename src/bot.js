@@ -94,7 +94,7 @@ client.on('interactionCreate', async (interaction) => {
         await deleteSessionHandler(interaction);
         break;
       case 'process_session':
-        logger('Handling command: process_session', info);
+        logger('Handling command: process_session', 'info');
         await processSessionHandler(interaction);
         break;
       case 'purge':
