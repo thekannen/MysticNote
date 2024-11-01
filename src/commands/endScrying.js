@@ -43,8 +43,8 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
     }
     logger('Stopping recording and processing transcription...', 'info');
 
-    // Stop active recordings and transcribe session
-    await stopRecording(userId); 
+    // Stop all active recordings
+    await stopRecording(); 
     
     // Clear session state and stop inactivity timer immediately
     setScryingSessionActive(false);
