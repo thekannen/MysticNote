@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { logger } from '../utils/logger.js';
+import { logger, verboseLog } from '../utils/logger.js';
 import { getDirName } from '../utils/common.js';
 
 // Define directories for recordings and transcripts
@@ -18,6 +18,7 @@ export async function deleteSessionHandler(interaction) {
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
       await interaction.reply('Please provide a valid session name to delete.');
+      verboseLog('Please provide a valid session name to delete.');
       return;
     }
 
@@ -28,6 +29,7 @@ export async function deleteSessionHandler(interaction) {
     // Check if the session directories exist
     if (!fs.existsSync(sessionRecordingDir) && !fs.existsSync(sessionTranscriptDir)) {
       await interaction.reply(`No session named "${sessionName}" found.`);
+      verboseLog(`No session named "${sessionName}" found.`);
       return;
     }
 
@@ -43,6 +45,7 @@ export async function deleteSessionHandler(interaction) {
 
     // Notify the user of successful deletion
     await interaction.reply(`The session "${sessionName}" has been deleted successfully.`);
+    verboseLog(`The session "${sessionName}" has been deleted successfully.`);
   } catch (error) {
     // Log any errors encountered during deletion
     logger('Error deleting session:', 'error');
@@ -62,12 +65,14 @@ export async function purgeHandler(interaction) {
     const confirmation = interaction.options.getString('confirmation');
     if (!confirmation) {
       await interaction.reply('Confirmation is required to proceed with purging all sessions.');
+      verboseLog('Confirmation is required to proceed with purging all sessions.');
       return;
     }
 
     // Verify confirmation is 'y' to proceed with purge; otherwise, cancel
     if (confirmation.toLowerCase() !== 'y') {
       await interaction.reply('Purge canceled. No sessions were deleted.');
+      verboseLog('Purge canceled. No sessions were deleted.');
       return;
     }
 
@@ -83,6 +88,7 @@ export async function purgeHandler(interaction) {
 
     // Notify the user that all sessions have been purged
     await interaction.reply('All sessions have been purged successfully.');
+    verboseLog('All sessions have been purged successfully.');
   } catch (error) {
     // Log any errors encountered during the purge
     logger('Error purging sessions:', 'error');
