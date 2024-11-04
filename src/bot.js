@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
 
 import { Client, GatewayIntentBits } from 'discord.js';
-import { logger } from './utils/logger.js'; 
+import { logger, verboseLog } from './utils/logger.js'; 
 import { startRecording, stopRecording, isScryingSessionOngoing, getActiveConnection } from './services/recordingService.js';
 import { setClient } from './utils/common.js';
 
@@ -22,7 +22,7 @@ setClient(client);  // Store the client instance globally
 
 // Event triggered once the bot successfully logs in
 client.once('ready', () => {
-  logger(`Logged in as ${client.user.tag}`, 'info');
+  verboseLog(`Logged in as ${client.user.tag}`);
 });
 
 // Event listener for user join/leave in voice channel
@@ -65,47 +65,47 @@ client.on('interactionCreate', async (interaction) => {
 
     switch (commandName) {
       case 'gaze':
-        logger('Handling command: gaze', 'info');
+        verboseLog('Handling command: gaze', 'info');
         await joinVoiceChannelHandler(interaction);
         break;
       case 'leave':
-        logger('Handling command: leave', 'info');
+        verboseLog('Handling command: leave', 'info');
         await leaveVoiceChannelHandler(interaction);
         break;
       case 'begin_scrying':
-        logger('Handling command: begin_scrying', 'info');
+        verboseLog('Handling command: begin_scrying', 'info');
         await transcribeAudioHandler(interaction);
         break;
       case 'end_scrying':
-        logger('Handling command: end_scrying', 'info');
+        verboseLog('Handling command: end_scrying', 'info');
         await stopRecordingAndTranscribe(interaction);
         break;
       case 'consult_the_texts':
-        logger('Handling command: consult_the_texts', 'info');
+        verboseLog('Handling command: consult_the_texts', 'info');
         await consultTheTextsHandler(interaction);
         break;
       case 'reveal_summary':
-        logger('Handling command: reveal_summary', 'info');
+        verboseLog('Handling command: reveal_summary', 'info');
         await revealSummary(interaction);
         break;
       case 'complete_vision':
-        logger('Handling command: complete_vision', 'info');
+        verboseLog('Handling command: complete_vision', 'info');
         await retrieveFullTranscription(interaction);
         break;
       case 'delete_session':
-        logger('Handling command: delete_session', 'info');
+        verboseLog('Handling command: delete_session', 'info');
         await deleteSessionHandler(interaction);
         break;
       case 'process_session':
-        logger('Handling command: process_session', 'info');
+        verboseLog('Handling command: process_session', 'info');
         await processSessionHandler(interaction);
         break;
       case 'purge':
-        logger('Handling command: purge', 'info');
+        verboseLog('Handling command: purge', 'info');
         await purgeHandler(interaction);
         break;
       default:
-        logger(`Unknown command: ${commandName}`, 'warning');
+        verboseLog(`Unknown command: ${commandName}`, 'warning');
         await interaction.reply({ content: 'Unknown command.', ephemeral: true });
     }
   } catch (error) {

@@ -5,7 +5,8 @@
 A versatile Discord bot built to record, transcribe, and summarize voice channel interactions. Using OpenAI's Whisper API, this bot captures conversations, generates summaries, and organizes transcriptions for convenient playback and review. Whether for gaming sessions, meetings, or casual conversations, this bot provides transcription services and structured records of each session.
 
 ## Table of Contents
-- [MysticNote](#MysticNote)
+- [This is still a work in progress and may not yet function as intended. If you've discovered this page, run at your own risk!](#this-is-still-a-work-in-progress-and-may-not-yet-function-as-intended-if-youve-discovered-this-page-run-at-your-own-risk)
+- [MysticNote](#mysticnote)
   - [Table of Contents](#table-of-contents)
   - [Disclaimer](#disclaimer)
   - [Features](#features)
@@ -316,12 +317,9 @@ To update the bot, please pull from the git main repository:
    Specifies the OpenAI language model used for generating session summaries. Larger models, such as those in the GPT-4 series, offer more nuanced summaries but may have higher usage limits or API costs. The selected model will affect the quality, detail, and potential cost of the summary generation.
 
    - **Type**: String  
-   - **Default**: `"gpt-4-turbo"`  
+   - **Default**: `"gpt-4o"`  
    - **Options**:
-     - **`"gpt-4-turbo-32k"`**: Ideal for handling very long sessions, with up to 32,768 tokens (approximately 24,576 words per chunk).
-     - **`"gpt-4-turbo"`**: Suitable for most sessions, with a limit of 8,192 tokens (approximately 6,144 words per chunk).
-     - **`"gpt-3.5-turbo-16k"`**: A cost-effective option with up to 16,384 tokens (approximately 12,288 words per chunk).
-     - **`"gpt-3.5-turbo"`**: The most budget-friendly choice, best for shorter sessions, with a limit of 4,096 tokens (approximately 3,072 words per chunk).   
+     - ** Please go here to learn about the available text models: [OpenAI Models](https://platform.openai.com/docs/models/)
    - **Example**: Setting `"gpt-3.5-turbo"` is suitable if you want a faster, more cost-effective model, particularly for shorter summaries.
 
 

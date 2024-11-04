@@ -116,7 +116,6 @@ export function setScryingSessionActive(isActive, channelId = null) {
   isScryingSessionActive = isActive;
   scryingChannelId = channelId;
 
-  logger(`Scrying session active: ${isActive}`, 'info');
   verboseLog(`Scrying session details: isActive=${isActive}, channelId=${channelId}`);
 
   if (isActive) {

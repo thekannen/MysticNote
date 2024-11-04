@@ -9,7 +9,17 @@ import config from '../config/config.js';
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
-// Function to transcribe all audio files in a session folder and save the transcriptions
+// Set to track unique attendees
+const attendees = new Set();
+
+function addAttendee(username) {
+  attendees.add(username);
+}
+
+export function getAttendees() {
+  return Array.from(attendees);
+}
+
 export async function transcribeAndSaveSessionFolder(sessionName) {
   const sessionFolderPath = path.join(recordingsDir, sessionName);
 
@@ -31,25 +41,32 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     const filePath = path.join(sessionFolderPath, file);
     const username = path.basename(file).split('_')[1];
 
-    // Extract timestamp from filename
-    const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop(); // Extract timestamp
-    const fileCreationTime = new Date(fileTimestamp.replace('T', ' ').replace(/-/g, ':')); // Replace `T` with space and `-` in time with `:`
+    // Track this user as an attendee
+    addAttendee(username);
 
-    verboseLog(`Starting transcription for file: ${filePath}, File Stamp: ${fileTimestamp} created at: ${fileCreationTime}`);
+    // Extract timestamp from filename and format it correctly
+    const fileTimestamp = path.basename(file, path.extname(file)).split('_').pop();
+    const formattedTimestamp = fileTimestamp.replace('T', ' ').replace(/-/g, ':').replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+    const fileStartTime = new Date(formattedTimestamp);
+
+    if (isNaN(fileStartTime.getTime())) {
+        logger(`Invalid date format in filename: ${file}`, 'err');
+        continue;
+    }
 
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
     if (transcriptionSegments) {
-      transcriptions.push(...transcriptionSegments.map(segment => ({
-        start: new Date(fileCreationTime.getTime() + segment.start * 1000),
-        end: new Date(fileCreationTime.getTime() + segment.end * 1000),
-        username,
-        text: segment.text
-      })));
-      verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
+        transcriptions.push(...transcriptionSegments.map(segment => ({
+            start: new Date(fileStartTime.getTime() + segment.start * 1000),
+            end: new Date(fileStartTime.getTime() + segment.end * 1000),
+            username,
+            text: segment.text
+        })));
+        verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
     } else {
-      verboseLog(`No transcription segments found for ${filePath}`, 'warn');
+        verboseLog(`No transcription segments found for ${filePath}`, 'warn');
     }
-  }
+}
 
   const aggregatedTranscriptions = aggregateTranscriptions(transcriptions);
   const combinedTranscription = formatTranscription(aggregatedTranscriptions);
@@ -61,7 +78,6 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
   const summary = await generateSummary(combinedTranscription, sessionName);
 
-  // If saveRecordings is set to false, delete the recordings after generating the summary
   if (summary && !config.saveRecordings) {
     for (const file of sessionFiles) {
       const filePath = path.join(sessionFolderPath, file);
@@ -73,37 +89,18 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
   return { summary, transcriptionFile: finalFilePath };
 }
 
-// Helper to aggregate transcription segments
+// Helper to aggregate transcription segments from multiple users in chronological order
 function aggregateTranscriptions(transcriptions) {
-  const BUFFER_MS = 500;
+  // Sort all transcription segments by start time
   transcriptions.sort((a, b) => a.start - b.start);
 
-  const aggregatedTranscriptions = [];
-  let currentSpeaker = null;
-  let currentText = "";
-  let currentStart = null;
-  let currentEnd = null;
-
-  transcriptions.forEach((segment, index) => {
-    if (segment.username === currentSpeaker && segment.start - currentEnd < BUFFER_MS) {
-      currentText += " " + segment.text;
-      currentEnd = segment.end;
-    } else {
-      if (currentSpeaker) {
-        aggregatedTranscriptions.push({ start: currentStart, end: currentEnd, username: currentSpeaker, text: currentText.trim() });
-        verboseLog(`Aggregated transcription for ${currentSpeaker} from ${currentStart} to ${currentEnd}`);
-      }
-      currentSpeaker = segment.username;
-      currentText = segment.text;
-      currentStart = segment.start;
-      currentEnd = segment.end;
-    }
-    if (index === transcriptions.length - 1) {
-      aggregatedTranscriptions.push({ start: currentStart, end: currentEnd, username: currentSpeaker, text: currentText.trim() });
-      verboseLog(`Final aggregated transcription for ${currentSpeaker} from ${currentStart} to ${currentEnd}`);
-    }
-  });
-  return aggregatedTranscriptions;
+  // Map each segment to a formatted entry without merging
+  return transcriptions.map(segment => ({
+    start: segment.start,
+    end: segment.end,
+    username: segment.username,
+    text: segment.text.trim()
+  }));
 }
 
 // Helper to format transcription entries for readability
@@ -112,5 +109,5 @@ function formatTranscription(transcriptions) {
     const start = entry.start.toLocaleString();
     const end = entry.end.toLocaleString();
     return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
-  }).join('\n\n');
+  }).join('\n'); // Join each entry with a newline for separate lines
 }

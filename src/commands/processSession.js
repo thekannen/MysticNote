@@ -30,7 +30,7 @@ export async function processSessionHandler(interaction) {
 
     // Provide feedback on completion or failure
     if (summary) {
-      await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
+      await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\n\n${summary}`);
       logger(`Transcription successfully saved to ${transcriptionFile}`, 'info');
     } else {
       await interaction.editReply('Transcription or summary generation failed.');

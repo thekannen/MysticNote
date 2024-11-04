@@ -1,0 +1,112 @@
+{
+  "models": {
+    "gpt-4o": {
+      "maxOutputTokens": 16384,
+      "contextWindow": 128000
+    },
+    "gpt-4o-2024-08-06": {
+      "maxOutputTokens": 16384,
+      "contextWindow": 128000
+    },
+    "gpt-4o-2024-05-13": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "chatgpt-4o-latest": {
+      "maxOutputTokens": 16384,
+      "contextWindow": 128000
+    },
+    "gpt-4o-mini": {
+      "maxOutputTokens": 16384,
+      "contextWindow": 128000
+    },
+    "gpt-4o-mini-2024-07-18": {
+      "maxOutputTokens": 16384,
+      "contextWindow": 128000
+    },
+    "gpt-3.5-turbo-instruct-0914": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 4096
+    },
+    "gpt-4o-realtime-preview": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4o-realtime-preview-2024-10-01": {
+      "maxOutputTokens": 2048,
+      "contextWindow": 128000
+    },
+    "gpt-4o-audio-preview": {
+      "maxOutputTokens": 2048,
+      "contextWindow": 128000
+    },
+    "gpt-4o-audio-preview-2024-10-01": {
+      "maxOutputTokens": 2048,
+      "contextWindow": 128000
+    },
+    "o1-preview": {
+      "maxOutputTokens": 32768,
+      "contextWindow": 128000
+    },
+    "o1-preview-2024-09-12": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "o1-mini": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "o1-mini-2024-09-12": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4-turbo": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4-turbo-2024-04-09": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4-turbo-preview": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4-0125-preview": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4-1106-preview": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 128000
+    },
+    "gpt-4": {
+      "maxOutputTokens": 8192,
+      "contextWindow": 8192
+    },
+    "gpt-4-0613": {
+      "maxOutputTokens": 8192,
+      "contextWindow": 8192
+    },
+    "gpt-4-0314": {
+      "maxOutputTokens": 8192,
+      "contextWindow": 8192
+    },
+    "gpt-3.5-turbo-0125": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 16385
+    },
+    "gpt-3.5-turbo": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 16385
+    },
+    "gpt-3.5-turbo-1106": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 16385
+    },
+    "gpt-3.5-turbo-instruct": {
+      "maxOutputTokens": 4096,
+      "contextWindow": 4096
+    }
+  }
+}
