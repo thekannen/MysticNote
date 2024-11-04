@@ -1,28 +1,49 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '../.env' });
+
 import fs from 'fs';
 import path from 'path';
 import { logger, verboseLog } from '../utils/logger.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import config from '../config/config.js';
+import { getAttendees } from './transcriptionService.js';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
+const modelFilePath = path.join(getDirName(), '../utils/modelTokenLimits.json');
+let modelTokenLimits = {};
 
-// Define model-specific limits
-const modelTokenLimits = {
-  'gpt-4-turbo-32k': { maxTokens: 32768, maxWordsPerChunk: 24576 },
-  'gpt-4-turbo': { maxTokens: 8192, maxWordsPerChunk: 6144 },
-  'gpt-3.5-turbo-16k': { maxTokens: 16384, maxWordsPerChunk: 12288 },
-  'gpt-3.5-turbo': { maxTokens: 4096, maxWordsPerChunk: 3072 },
-};
-
-// Determine API limits based on the chosen model
-function getApiLimits(modelName) {
-  const defaultSettings = { maxTokens: 4096, maxWordsPerChunk: 3072 };
-  const limits = modelTokenLimits[modelName] || defaultSettings;
-  verboseLog(`API limits for ${modelName}: ${JSON.stringify(limits)}`);
-  return limits;
+// Import the model token limits JSON file
+try {
+  // Attempt to read and parse the configuration file
+  modelTokenLimits = JSON.parse(fs.readFileSync(modelFilePath, 'utf8'));
+} catch (error) {
+  // Log an error if the configuration file fails to load
+  logger("Error loading models:", 'err');
+  process.exit(1); // Exit the process to prevent further issues
 }
 
-const { maxTokens: MAX_API_TOKENS, maxWordsPerChunk: MAX_WORDS_PER_CHUNK } = getApiLimits(config.openAIModel || 'gpt-4-turbo');
+// Fetches the maximum tokens for the specified model
+function getModelMaxTokens(modelName) {
+  const modelInfo = modelTokenLimits.models[modelName];
+  if (modelInfo) {
+    return modelInfo.maxOutputTokens;
+  } else {
+    console.warn(`Model ${modelName} not found in token limits configuration.`);
+    return null;
+  }
+}
+
+// Initializes model-specific limits based on the chosen model
+async function initializeModelSettings(modelName) {
+  const maxTokens = await getModelMaxTokens(modelName) || 4096; // Fallback to default if not found
+  const maxWordsPerChunk = Math.floor(maxTokens * 0.75); // Approximate words per chunk
+
+  verboseLog(`Initialized ${modelName} settings: maxTokens = ${maxTokens}, maxWordsPerChunk = ${maxWordsPerChunk}`);
+  return { maxTokens, maxWordsPerChunk };
+}
+
+// Run this to initialize and set limits for the chosen model
+const { maxTokens: MAX_API_TOKENS, maxWordsPerChunk: MAX_WORDS_PER_CHUNK } = await initializeModelSettings(config.openAIModel || 'gpt-4-turbo');
 
 // Splits the transcription text into sentence-based chunks
 function splitTextIntoSentenceChunks(text, maxWords) {
@@ -75,9 +96,7 @@ export async function generateSummary(transcriptionText, sessionName) {
 
   for (const chunk of chunks) {
     const prompt = `
-      Here is a portion of a conversation transcript. Please summarize it, ignoring any background noise, music, or non-speech sounds. Focus only on the spoken content and relevant dialog.
-
-      After the summary, provide a bulleted list of the key events in the order they happened.
+      Here is a portion of a conversation transcript. Please summarize it, focusing on the spoken content and relevant dialog only.
 
       Transcript:
       ${chunk}
@@ -87,7 +106,6 @@ export async function generateSummary(transcriptionText, sessionName) {
       Key Events:
       - first key event
       - second key event
-      - etc.
     `;
 
     verboseLog(`Sending API request for chunk with content length: ${chunk.length}`);
@@ -115,28 +133,30 @@ export async function generateSummary(transcriptionText, sessionName) {
         chunkSummaries.push(summaryText);
         chunkKeyEvents.push(...keyEvents.map(event => event.trim()));
 
-        verboseLog(`Chunk summary generated: ${chunkSummary}`);
+        //verboseLog(`Chunk summary generated: ${chunkSummary}`);
       } else {
         logger('No summary available for this chunk.', 'error');
+        verboseLog(`API response: ${JSON.stringify(data)}`);
       }
     } catch (apiError) {
       logger(`Failed to generate summary for chunk after retries: ${apiError.message}`, 'error');
     }
   }
 
-  // Combine all summaries into one API call for a final cohesive summary
+  // Truncate chunk summaries and key events if necessary
+  const combinedSummaries = chunkSummaries.slice(0, Math.floor(MAX_API_TOKENS / 10)).join('\n\n');
+  const combinedKeyEvents = chunkKeyEvents.slice(0, Math.floor(MAX_API_TOKENS / 10)).join('\n- ');
+  const attendees = getAttendees();
+
+  // Construct the summary prompt without attendees
   const finalSummaryPrompt = `
-    Below are summaries and key events from parts of a longer conversation. Combine them into a single, cohesive summary that covers the entire conversation, followed by a complete list of key events in order.
+  Please summarize the following conversation and list key events:
 
-    Summaries:
-    ${chunkSummaries.join('\n\n')}
+  Summaries:
+  ${combinedSummaries}
 
-    Key Events:
-    - ${chunkKeyEvents.join('\n- ')}
-
-    Overall Summary:
-    
-    Key Events:
+  Key Events:
+  - ${combinedKeyEvents}
   `;
 
   verboseLog(`Sending final API request for combined summary`);
@@ -159,8 +179,13 @@ export async function generateSummary(transcriptionText, sessionName) {
 
     const finalData = await finalResponse.json();
     if (finalData.choices && finalData.choices[0]?.message?.content) {
-      finalSummary = finalData.choices[0].message.content.trim();
-      const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);
+      // Prepend attendees to the summary
+      const attendeesText = `Attendees: ${attendees.length > 0 ? attendees.join(', ') : 'No attendees recorded'}\n\n`;
+
+      finalSummary = attendeesText + finalData.choices[0].message.content.trim();
+      const sessionTranscriptsDir = path.join(transcriptsDir, sessionName);          
+
+      // Save the summary with attendees
       saveSummaryToFile(sessionTranscriptsDir, sessionName, finalSummary);
 
       verboseLog(`Final combined summary generated.`);
@@ -168,6 +193,7 @@ export async function generateSummary(transcriptionText, sessionName) {
     } else {
       finalSummary = 'No final summary available';
       logger('Failed to generate a final combined summary.', 'error');
+      verboseLog(`Final API response: ${JSON.stringify(finalData)}`);
     }
   } catch (apiError) {
     finalSummary = 'Final summary generation failed';

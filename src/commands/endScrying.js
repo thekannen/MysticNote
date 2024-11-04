@@ -57,9 +57,9 @@ export async function stopRecordingAndTranscribe(interaction, channelExt) {
     // Notify the user with the transcription summary or an error message if the summary is unavailable
     if (summary) {
       if (interaction) {
-        await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
+        await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\n\n${summary}`);
       } else {
-        await channel.send(`The orb dims, and the vision is now sealed in writing…\nSummary: ${summary}`);
+        await channel.send(`The orb dims, and the vision is now sealed in writing…\n\n${summary}`);
       }
       logger(`Transcription saved to ${transcriptionFile}`, 'info');
     } else {
