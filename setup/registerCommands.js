@@ -59,17 +59,6 @@ const revealSummaryCommand = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-// Command to retrieve the full transcript of a specific session
-const completeVisionCommand = new SlashCommandBuilder()
-  .setName('complete_vision')
-  .setDescription('Retrieve the full record of the scryed voices, as written by the orb.')
-  .addStringOption((option) =>
-    option
-      .setName('session')
-      .setDescription('The name of the session you wish to reveal.')
-      .setRequired(true)
-  );
-
 // Command to delete a specific session's recordings and transcripts
 const deleteSessionCommand = new SlashCommandBuilder()
   .setName('delete_session')
@@ -88,7 +77,7 @@ const purgeCommand = new SlashCommandBuilder()
   .addStringOption((option) =>
     option
       .setName('confirmation')
-      .setDescription('Type "y" to delete everything! This cannot be undone!')
+      .setDescription('Type "CONFIRM" to delete everything! This cannot be undone!')
       .setRequired(true)
   );
 

@@ -1,59 +1,76 @@
-import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
-import { stopRecording, getSessionName, setScryingSessionActive, setSessionName } from '../services/recordingService.js';
+import { SlashCommandBuilder } from 'discord.js';
+import {
+  transcribeAndSaveSessionFolder,
+} from '../services/transcriptionService.js';
+import {
+  stopRecording,
+  getSessionName,
+  setScryingSessionActive,
+  setSessionName,
+} from '../services/recordingService.js';
 import { clearInactivityTimer } from '../utils/timers.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
 /**
- * Stops all active recordings, processes transcription, and sends the result to the specified channel.
- *
- * @param {Object} interaction - Discord interaction containing user command details (if any).
- * @param {Object} channelExt - Optional external channel to send messages if interaction is not provided.
+ * Data for the 'end_scrying' command.
  */
-export async function stopRecordingAndTranscribe(interaction, channelExt) {
-  const channel = interaction?.channel || channelExt;
+export const data = new SlashCommandBuilder()
+  .setName('end_scrying')
+  .setDescription('Stops the scrying session and processes the transcription.');
 
-  if (!channel) {
-    logger(`Channel not found. Unable to proceed with transcription.`, 'error');
-    return;
-  }
-
+/**
+ * Executes the 'end_scrying' command.
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction object.
+ */
+export async function execute(interaction) {
   try {
+    const channel = interaction.channel;
+
+    if (!channel) {
+      logger(`Channel not found. Unable to proceed with transcription.`, 'error');
+      await interaction.reply({
+        content: 'An error occurred: Channel not found.',
+        ephemeral: true,
+      });
+      return;
+    }
+
     const sessionName = getSessionName();
     if (!sessionName) {
       const message = 'No active scrying session found. Please start a session first.';
-      interaction ? await interaction.reply(message) : await channel.send(message);
+      await interaction.reply({ content: message, ephemeral: true });
       verboseLog('No active scrying session found. Please start a session first.');
       setScryingSessionActive(false);
       return;
     }
 
-    const notification = 'Stopping the scrying and processing the vision… This may take a while. Please remain patient and do not leave.';
-    interaction ? await interaction.reply({ content: notification, ephemeral: false }) : await channel.send(notification);
+    const notification = 'Stopping the scrying and processing the vision… This may take a while. Please remain patient.';
+    await interaction.reply({ content: notification, ephemeral: false });
     logger('Stopping recording and processing transcription...', 'info');
 
     // Stop all active recordings and clear inactivity timer immediately
-    await stopRecording(); 
+    await stopRecording();
     clearInactivityTimer();
 
     const { summary, transcriptionFile } = await transcribeAndSaveSessionFolder(sessionName);
 
     if (summary) {
       const successMessage = `The orb dims, and the vision is now sealed in writing…\n\n${summary}`;
-      interaction ? await interaction.editReply(successMessage) : await channel.send(successMessage);
+      await interaction.editReply({ content: successMessage });
       logger(`Transcription saved to ${transcriptionFile}`, 'info');
     } else {
       const failureMessage = 'Transcription or summary failed.';
-      interaction ? await interaction.editReply(failureMessage) : await channel.send(failureMessage);
+      await interaction.editReply({ content: failureMessage });
       logger(failureMessage, 'error');
     }
   } catch (error) {
     const errorMessage = 'An error occurred while processing the transcription and summary.';
-    logger(`Error during stop and transcribe process: ${error.message}\n${error.stack}`, 'error');
-    interaction ? await interaction.editReply(errorMessage) : await channel.send(errorMessage);
+    logger(`Error during end_scrying command: ${error.message}\n${error.stack}`, 'error');
+    await interaction.editReply({ content: errorMessage });
   } finally {
     // Clear session state to prevent further recording attempts in this session
     setSessionName(null);
-    setScryingSessionActive(false);  
+    setScryingSessionActive(false);
     verboseLog('Session state reset after transcription process.');
   }
 }

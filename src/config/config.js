@@ -29,6 +29,8 @@ try {
     saveRecordings: true,
     audioQuality: 'medium',
     verbose: false,
+    logLevel: 'info',
+    logsDirectory: '../../bin/logs',
   };
 
   // Merge default config with user config
@@ -113,6 +115,25 @@ try {
   // verbose should be a boolean
   if (typeof config.verbose !== 'boolean') {
     throw new Error('Configuration property "verbose" must be a boolean.');
+  }
+
+  // Validate logLevel against allowed values
+  const validLogLevels = ['error', 'warn', 'info', 'verbose', 'debug'];
+  if (
+    typeof config.logLevel !== 'string' ||
+    !validLogLevels.includes(config.logLevel)
+  ) {
+    throw new Error(
+      `Configuration property "logLevel" must be one of: ${validLogLevels.join(', ')}.`
+    );
+  }
+
+  // Validate logsDirectory
+  if (
+    config.logsDirectory &&
+    (typeof config.logsDirectory !== 'string' || config.logsDirectory.trim() === '')
+  ) {
+    throw new Error('Configuration property "logsDirectory" must be a non-empty string.');
   }
 } catch (error) {
   if (error.code === 'ENOENT') {

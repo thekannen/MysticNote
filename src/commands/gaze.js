@@ -4,22 +4,30 @@ import {
   entersState,
   getVoiceConnection,
 } from '@discordjs/voice';
-import { PermissionsBitField } from 'discord.js';
+import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { setConnection } from '../services/recordingService.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
 /**
- * Handles the command to make the bot join the user's voice channel.
- * If the user is not in a voice channel or not in a server, it replies with an error message.
- *
- * @param {import('discord.js').CommandInteraction} interaction - The Discord interaction containing the command details.
- * @returns {import('@discordjs/voice').VoiceConnection|null} The voice connection object if successful, otherwise null.
+ * Data for the 'gaze' command.
  */
-export async function joinVoiceChannelHandler(interaction) {
+export const data = new SlashCommandBuilder()
+  .setName('gaze')
+  .setDescription(
+    'The bot enters the channel, peering into the voices of the unseen.'
+  );
+
+/**
+ * Executes the 'gaze' command.
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction object.
+ * @returns {Promise<import('@discordjs/voice').VoiceConnection|null>} The voice connection if successful, otherwise null.
+ */
+export async function execute(interaction) {
   // Ensure the interaction is in a server and the user is in a voice channel
   if (!interaction.guild || !interaction.member.voice?.channel) {
     await interaction.reply({
-      content: 'Please join a voice channel in a server for the scrying to commence.',
+      content:
+        'Please join a voice channel in a server for the scrying to commence.',
       ephemeral: true,
     });
     verboseLog('User is not in a voice channel or guild.');
@@ -27,7 +35,9 @@ export async function joinVoiceChannelHandler(interaction) {
   }
 
   // Check if the bot has the necessary permissions
-  const permissions = interaction.member.voice.channel.permissionsFor(interaction.client.user);
+  const permissions = interaction.member.voice.channel.permissionsFor(
+    interaction.client.user
+  );
   if (
     !permissions.has(PermissionsBitField.Flags.Connect) ||
     !permissions.has(PermissionsBitField.Flags.Speak)
@@ -43,7 +53,10 @@ export async function joinVoiceChannelHandler(interaction) {
   // Check if the bot is already connected to the voice channel
   const existingConnection = getVoiceConnection(interaction.guild.id);
   if (existingConnection) {
-    if (existingConnection.joinConfig.channelId === interaction.member.voice.channel.id) {
+    if (
+      existingConnection.joinConfig.channelId ===
+      interaction.member.voice.channel.id
+    ) {
       await interaction.reply({
         content: 'I am already connected to your voice channel!',
         ephemeral: true,
@@ -71,25 +84,42 @@ export async function joinVoiceChannelHandler(interaction) {
     setConnection(connection); // Store the connection for future use
 
     // Handle disconnections
-    connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-      try {
-        // Attempt to reconnect
-        await Promise.race([
-          entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-          entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
-        ]);
-        // Reconnected successfully
-        logger('Reconnected to the voice channel.', 'info');
-      } catch (error) {
-        // Unable to reconnect within 5 seconds
-        logger('Disconnected from the voice channel.', 'warn');
-        connection.destroy();
+    connection.on(
+      'stateChange',
+      async (oldState, newState) => {
+        if (
+          oldState.status === VoiceConnectionStatus.Ready &&
+          newState.status === VoiceConnectionStatus.Disconnected
+        ) {
+          try {
+            // Attempt to reconnect
+            await Promise.race([
+              entersState(
+                connection,
+                VoiceConnectionStatus.Signalling,
+                5_000
+              ),
+              entersState(
+                connection,
+                VoiceConnectionStatus.Connecting,
+                5_000
+              ),
+            ]);
+            // Reconnected successfully
+            logger('Reconnected to the voice channel.', 'info');
+          } catch (error) {
+            // Unable to reconnect within 5 seconds
+            logger('Disconnected from the voice channel.', 'warn');
+            connection.destroy();
+          }
+        }
       }
-    });
+    );
 
     // Notify the user that the bot has joined the voice channel
     await interaction.editReply({
-      content: 'The mystical orb swirls and reveals all voices within range…',
+      content:
+        'The mystical orb swirls and reveals all voices within range…',
     });
 
     return connection; // Return the established connection
@@ -98,14 +128,16 @@ export async function joinVoiceChannelHandler(interaction) {
     logger(`Error joining voice channel: ${error.message}`, 'error');
     verboseLog(`Stack trace: ${error.stack}`);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: 'An error occurred while attempting to join the voice channel.',
-        ephemeral: true,
-      });
-    } else if (interaction.deferred) {
+    if (interaction.deferred) {
       await interaction.editReply({
-        content: 'An error occurred while attempting to join the voice channel.',
+        content:
+          'An error occurred while attempting to join the voice channel.',
+      });
+    } else if (!interaction.replied) {
+      await interaction.reply({
+        content:
+          'An error occurred while attempting to join the voice channel.',
+        ephemeral: true,
       });
     }
     return null; // Return null if an error occurs

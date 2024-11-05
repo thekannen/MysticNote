@@ -1,10 +1,13 @@
 {
   "botVersion": "1.0.1.0",
-  "inactivityTimeoutMinutes": 90,
+  "inactivityTimeoutMinutes": 1,
   "sessionNameMaxLength": 50,
   "whisperModel": "small",
   "openAIModel": "gpt-4o",
   "saveRecordings": true, 
   "audioQuality": "low",
-  "verbose": true
+  "verbose": true,
+  "logLevel": "debug",
+  "logsDirectory": "../bin/logs",
+  "timezone": "local"
 }
