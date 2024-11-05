@@ -8,7 +8,7 @@ import config from '../config/config.js';
 import { verboseLog, logger } from '../utils/logger.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName, generateTimestamp, getClient } from '../utils/common.js';
-import { stopRecordingAndTranscribe } from '../commands/endScrying.js';
+import { execute } from '../commands/endScrying.js';
 
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
@@ -65,7 +65,7 @@ async function endScryingSession() {
     await channel.send(
       `The scrying session has ended due to ${config.inactivityTimeoutMinutes} minutes of inactivity.`
     );
-    await stopRecordingAndTranscribe(null, channel);
+    await execute(null, channel);
 
     logger('Scrying session ended due to inactivity.', 'info');
   } else {
@@ -159,10 +159,11 @@ export async function startRecording(conn, userId, username) {
   const debugInterval = setInterval(() => {
     const elapsedTime = (process.hrtime.bigint() - startTime) / 1000000n;
     const realElapsedSeconds = Number(elapsedTime) / 1000;
-    verboseLog(
+    logger(
       `Debug: Real elapsed time: ${realElapsedSeconds.toFixed(
         2
-      )} seconds, Expected WAV file length: ~${realElapsedSeconds.toFixed(2)} seconds`
+      )} seconds, Expected WAV file length: ~${realElapsedSeconds.toFixed(2)} seconds`,
+      'debug'
     );
   }, 5000);
 
@@ -239,10 +240,11 @@ export async function startRecording(conn, userId, username) {
             const wavDuration = parseFloat(stdout.trim());
             const finalElapsedTime =
               Number(process.hrtime.bigint() - startTime) / 1000000000;
-            verboseLog(
+            logger(
               `Debug Complete: Real elapsed time: ${finalElapsedTime.toFixed(
                 2
-              )} seconds, Actual WAV file length: ${wavDuration.toFixed(2)} seconds`
+              )} seconds, Actual WAV file length: ${wavDuration.toFixed(2)} seconds`,
+              'debug'
             );
           }
         );
@@ -282,28 +284,33 @@ export async function startRecording(conn, userId, username) {
         if (silenceTailTimer) {
           clearTimeout(silenceTailTimer);
           silenceTailTimer = null;
-          verboseLog('DEBUGGING: Silence tail timer cleared as audio resumed.');
+          logger('DEBUGGING: Silence tail timer cleared as audio resumed.', 'debug');
         }
+
+         // **Reset the inactivity timer when audio is active**
+        resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
+        logger('Inactivity timer reset due to audio activity.', 'debug');
       } else if (isAudioActive && !silenceTailTimer) {
-        verboseLog('DEBUGGING: Volume below threshold, starting silence tail timer.');
+        logger('DEBUGGING: Volume below threshold, starting silence tail timer.', 'debug');
 
         silenceTailTimer = setTimeout(() => {
           isAudioActive = false; // Mark audio as inactive
           silenceTailTimer = null; // Clear the timer
-          verboseLog(
-            'DEBUGGING: Silence tail timer expired; treating as end of audio. Setting isAudioActive to false.'
+          logger(
+            'DEBUGGING: Silence tail timer expired; treating as end of audio. Setting isAudioActive to false.',
+            'debug'
           );
         }, SILENCE_TAIL_DURATION);
       }
 
       logger(
         `DEBUGGING: End of chunk processing. isAudioActive=${isAudioActive}, silenceTailTimer=${!!silenceTailTimer}`,
-        'info'
+        'debug'
       );
     });
 
     pcmStream.on('end', () => {
-      logger('DEBUGGING: Ending PCM stream!', 'info');
+      logger('DEBUGGING: Ending PCM stream!', 'debug');
       // Clear any remaining silence tail timer on stream end
       if (silenceTailTimer) {
         clearTimeout(silenceTailTimer);

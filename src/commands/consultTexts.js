@@ -1,30 +1,31 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { getDirName } from '../utils/common.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
-// Define the path to the transcripts directory
-const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
+export const data = {
+  name: 'consult_the_texts',
+  description: "Lists all the scrying sessions saved to the wizard's tome.",
+};
 
-/**
- * Retrieves and lists all recorded scrying sessions (directories) within the transcripts folder.
- *
- * @param {Object} interaction - The Discord interaction for sending replies.
- */
-export async function consultTheTextsHandler(interaction) {
+export async function execute(interaction) {
   try {
+    const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
+
     // Check if the transcripts directory exists; if not, notify user of empty texts
-    if (!fs.existsSync(transcriptsDir)) {
+    try {
+      await fs.access(transcriptsDir);
+    } catch {
       await interaction.reply('No scrying sessions found. The texts are empty.');
       verboseLog('No scrying sessions found. The texts are empty.');
       return;
     }
 
     // Read all subdirectories in the transcripts directory
-    const sessionFolders = fs.readdirSync(transcriptsDir).filter(folder => {
-      const fullPath = path.join(transcriptsDir, folder);
-      return fs.statSync(fullPath).isDirectory(); // Only include directories (sessions)
-    });
+    const entries = await fs.readdir(transcriptsDir, { withFileTypes: true });
+    const sessionFolders = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
 
     // If no session folders are found, notify the user
     if (sessionFolders.length === 0) {
@@ -34,13 +35,14 @@ export async function consultTheTextsHandler(interaction) {
     }
 
     // Map each session folder to a string with its name and creation date
-    const sessionList = sessionFolders
-      .map((folder, index) => {
-        const fullPath = path.join(transcriptsDir, folder);
-        const createdDate = fs.statSync(fullPath).birthtime.toLocaleString(); // Format creation date
-        return `**${index + 1}.** ${folder} (Created on: ${createdDate})`;
-      })
-      .join('\n');
+    const sessionListPromises = sessionFolders.map(async (folder, index) => {
+      const fullPath = path.join(transcriptsDir, folder);
+      const stats = await fs.stat(fullPath);
+      const createdDate = stats.birthtime.toLocaleString();
+      return `**${index + 1}.** ${folder} (Created on: ${createdDate})`;
+    });
+
+    const sessionList = (await Promise.all(sessionListPromises)).join('\n');
 
     // Construct the final message to send to the user
     const responseMessage = `The following scrying sessions have been recorded in the archives:\n\n${sessionList}`;
@@ -49,7 +51,8 @@ export async function consultTheTextsHandler(interaction) {
     await interaction.reply(responseMessage);
   } catch (error) {
     // Log any errors and notify the user
-    logger('Error retrieving session names:', 'error');
+    logger(`Error retrieving session names: ${error.message}`, 'error');
+    logger(`Stack trace: ${error.stack}`, 'error');
     await interaction.reply('An error occurred while consulting the texts.');
   }
 }

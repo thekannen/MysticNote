@@ -1,121 +1,121 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { SlashCommandBuilder } from 'discord.js';
 import { getDirName } from '../utils/common.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
-// Define the directory where transcripts are stored
-const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
+/**
+ * Data for the 'reveal_summary' command.
+ */
+export const data = new SlashCommandBuilder()
+  .setName('reveal_summary')
+  .setDescription('Displays the most recent summary for a given scrying session.')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session to retrieve the summary from')
+      .setRequired(true)
+  );
 
 /**
- * Retrieves and displays the most recent summary for a given session.
- *
- * @param {Object} interaction - The Discord interaction containing the command details.
+ * Executes the 'reveal_summary' command.
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction object.
  */
-export async function revealSummary(interaction) {
+export async function execute(interaction) {
   try {
     // Get the session name from the user's input
     const sessionName = interaction.options.getString('session');
-    if (!sessionName) {
-      await interaction.reply('Please provide a session name to summarize.');
-      verboseLog('Please provide a session name to summarize.');
+
+    if (!sessionName || sessionName.trim() === '') {
+      await interaction.reply({
+        content: 'Please provide a valid session name to summarize.',
+        ephemeral: true,
+      });
+      verboseLog('Invalid or empty session name provided for summary.');
       return;
     }
 
+    // Sanitize session name to prevent directory traversal attacks
+    const sanitizedSessionName = sessionName.replace(/[^a-zA-Z0-9-_]/g, '_');
+
     // Construct the path to the session's transcript directory
-    const sessionTranscriptDir = path.join(transcriptsDir, sessionName);
-    if (!fs.existsSync(sessionTranscriptDir)) {
-      await interaction.reply(`No session named "${sessionName}" found.`);
-      verboseLog(`No session named "${sessionName}" found.`);
+    const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
+    const sessionTranscriptDir = path.join(transcriptsDir, sanitizedSessionName);
+
+    // Check if the session directory exists
+    try {
+      await fs.access(sessionTranscriptDir);
+    } catch {
+      await interaction.reply({
+        content: `No session named "${sanitizedSessionName}" found.`,
+        ephemeral: true,
+      });
+      verboseLog(`No session named "${sanitizedSessionName}" found.`);
       return;
     }
 
     // Get all files in the directory with the prefix 'summary_'
-    const summaryFiles = fs.readdirSync(sessionTranscriptDir)
-      .filter(file => file.startsWith('summary_') && file.endsWith('.txt'));
+    const files = await fs.readdir(sessionTranscriptDir);
+    const summaryFiles = files.filter(
+      (file) => file.startsWith('summary_') && file.endsWith('.txt')
+    );
 
     if (summaryFiles.length === 0) {
-      await interaction.reply('No summary found for the specified session.');
+      await interaction.reply({
+        content: 'No summary found for the specified session.',
+        ephemeral: true,
+      });
       verboseLog('No summary found for the specified session.');
       return;
     }
 
     // Sort summary files by modification time to get the latest summary
-    const latestSummaryFile = summaryFiles
-      .map(file => ({ file, time: fs.statSync(path.join(sessionTranscriptDir, file)).mtime }))
-      .sort((a, b) => b.time - a.time)[0].file;
+    const summaryFilesWithTime = await Promise.all(
+      summaryFiles.map(async (file) => {
+        const filePath = path.join(sessionTranscriptDir, file);
+        const stats = await fs.stat(filePath);
+        return { file, time: stats.mtime };
+      })
+    );
+
+    summaryFilesWithTime.sort((a, b) => b.time - a.time);
+    const latestSummaryFile = summaryFilesWithTime[0].file;
 
     // Read the content of the most recent summary file
     const summaryFilePath = path.join(sessionTranscriptDir, latestSummaryFile);
-    const summaryText = fs.readFileSync(summaryFilePath, 'utf-8');
+    const summaryText = await fs.readFile(summaryFilePath, 'utf-8');
 
     // Send the summary content back to the user, if available
     if (summaryText) {
-      await interaction.reply(`A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`);
-      verboseLog(`A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`);
+      // Handle Discord's message length limit (2000 characters)
+      if (summaryText.length > 2000) {
+        // Send the summary as a file attachment
+        await interaction.reply({
+          content: 'The summary is too long to display here. Please find it attached.',
+          files: [{ attachment: summaryFilePath, name: latestSummaryFile }],
+          ephemeral: false,
+        });
+      } else {
+        await interaction.reply({
+          content: `A brief vision appears… Here is the essence of what was revealed:\n\n${summaryText}`,
+          ephemeral: false,
+        });
+      }
+      verboseLog(`Displayed summary for session "${sanitizedSessionName}".`);
     } else {
-      await interaction.reply('Unable to reveal the summary of the vision.');
+      await interaction.reply({
+        content: 'Unable to reveal the summary of the vision.',
+        ephemeral: true,
+      });
       verboseLog('Unable to reveal the summary of the vision.');
     }
   } catch (error) {
     // Log and notify user if an error occurs
-    logger('Error revealing summary:', 'error');
-    await interaction.reply('An error occurred while attempting to reveal the summary.');
-  }
-}
-
-/**
- * Retrieves and displays the full transcription for a given session.
- *
- * @param {Object} interaction - The Discord interaction containing the command details.
- */
-export async function retrieveFullTranscription(interaction) {
-  try {
-    // Get the session name from the user's input
-    const sessionName = interaction.options.getString('session');
-    if (!sessionName) {
-      await interaction.reply('Please provide a session name to retrieve the transcription.');
-      verboseLog('Please provide a session name to retrieve the transcription.');
-      return;
-    }
-
-    // Construct the path to the session's transcript directory
-    const sessionTranscriptDir = path.join(transcriptsDir, sessionName);
-    if (!fs.existsSync(sessionTranscriptDir)) {
-      await interaction.reply(`No session named "${sessionName}" found.`);
-      verboseLog(`No session named "${sessionName}" found.`);
-      return;
-    }
-
-    // Get all files in the directory with the prefix 'full_'
-    const fullTranscriptFiles = fs.readdirSync(sessionTranscriptDir)
-      .filter(file => file.startsWith('full_') && file.endsWith('.txt'));
-
-    if (fullTranscriptFiles.length === 0) {
-      await interaction.reply('No full transcription found for the specified session.');
-      verboseLog('No full transcription found for the specified session.');
-      return;
-    }
-
-    // Sort full transcription files by modification time to get the latest transcription
-    const latestFullTranscriptFile = fullTranscriptFiles
-      .map(file => ({ file, time: fs.statSync(path.join(sessionTranscriptDir, file)).mtime }))
-      .sort((a, b) => b.time - a.time)[0].file;
-
-    // Read the content of the most recent full transcription file
-    const fullTranscriptFilePath = path.join(sessionTranscriptDir, latestFullTranscriptFile);
-    const transcriptionText = fs.readFileSync(fullTranscriptFilePath, 'utf-8');
-
-    // Send the full transcription content back to the user, if available
-    if (transcriptionText) {
-      await interaction.reply(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
-      verboseLog(`The orb reveals every word it has transcribed… the complete vision awaits:\n\n${transcriptionText}`);
-    } else {
-      await interaction.reply('Unable to retrieve the full transcription.');
-      verboseLog('Unable to retrieve the full transcription.');
-    }
-  } catch (error) {
-    // Log and notify user if an error occurs
-    logger('Error retrieving full transcription:', 'error');
-    await interaction.reply('An error occurred while attempting to retrieve the full transcription.');
+    logger(`Error revealing summary: ${error.message}`, 'error');
+    logger(`Stack trace: ${error.stack}`, 'error');
+    await interaction.reply({
+      content: 'An error occurred while attempting to reveal the summary.',
+      ephemeral: true,
+    });
   }
 }

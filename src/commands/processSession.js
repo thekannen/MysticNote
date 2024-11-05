@@ -1,24 +1,42 @@
+import { SlashCommandBuilder } from 'discord.js';
 import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
 import { setSessionName, setScryingSessionActive } from '../services/recordingService.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
 /**
- * Processes transcription and sends the result to the specified channel.
- *
- * @param {Object} interaction - Discord interaction containing user command details (if any).
- * @param {Object} channelExt - Optional external channel to send messages if interaction is not provided.
+ * Data for the 'process_session' command.
  */
-export async function processSessionHandler(interaction) {
+export const data = new SlashCommandBuilder()
+  .setName('process_session')
+  .setDescription('Reprocesses a previous scrying session for transcription and summarization.')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session to reprocess')
+      .setRequired(true)
+  );
+
+/**
+ * Executes the 'process_session' command.
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction object.
+ */
+export async function execute(interaction) {
   try {
     const sessionName = interaction.options.getString('session');
-    if (!sessionName) {
-      await interaction.reply('Please provide a valid session name to reprocess.');
-      verboseLog('Please provide a valid session name to reprocess.');
+    if (!sessionName || sessionName.trim() === '') {
+      await interaction.reply({
+        content: 'Please provide a valid session name to reprocess.',
+        ephemeral: true,
+      });
+      verboseLog('No session name provided for reprocessing.');
       return;
     }
 
     // Notify the user about transcription starting and update logs
-    await interaction.reply(`Starting transcription and summarization for session: ${sessionName}`);
+    await interaction.reply({
+      content: `Starting transcription and summarization for session: "${sessionName}"`,
+      ephemeral: false,
+    });
     logger(`Reprocessing session: ${sessionName}`, 'info');
 
     // Clear session state and disable scrying to avoid overlap
@@ -30,14 +48,21 @@ export async function processSessionHandler(interaction) {
 
     // Provide feedback on completion or failure
     if (summary) {
-      await interaction.editReply(`The orb dims, and the vision is now sealed in writing…\n\n${summary}`);
+      await interaction.editReply({
+        content: `The orb dims, and the vision is now sealed in writing…\n\n${summary}`,
+      });
       logger(`Transcription successfully saved to ${transcriptionFile}`, 'info');
     } else {
-      await interaction.editReply('Transcription or summary generation failed.');
+      await interaction.editReply({
+        content: 'Transcription or summary generation failed.',
+      });
       logger('Failed to generate transcription or summary.', 'error');
     }
   } catch (error) {
-    logger(`Error during transcription process: ${error.message}`, 'error');
-    await interaction.editReply('An error occurred while processing the transcription and summary.');
+    logger(`Error during process_session command: ${error.message}`, 'error');
+    logger(`Stack trace: ${error.stack}`, 'error');
+    await interaction.editReply({
+      content: 'An error occurred while processing the transcription and summary.',
+    });
   }
 }
