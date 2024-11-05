@@ -1,139 +1,137 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
 
-import { InstallGlobalCommands } from '../src/utils/common.js';
+import { REST, Routes, ApplicationCommandType, ApplicationCommandOptionType } from 'discord.js';
+import { SlashCommandBuilder } from '@discordjs/builders';
 import config from '../src/config/config.js';
+import { logger } from '../src/utils/logger.js';
 
-// Define command list with their descriptions and options
+// Ensure that APP_ID and DISCORD_TOKEN are set
+if (!process.env.APP_ID || !process.env.DISCORD_TOKEN) {
+  logger('Error: APP_ID and DISCORD_TOKEN must be set in the environment variables.', 'error');
+  process.exit(1);
+}
+
+// Define commands using SlashCommandBuilder
+
+const commands = [];
 
 // Command for the bot to join the voice channel
-const GAZE_COMMAND = {
-  name: 'gaze',
-  description: 'The bot enters the channel, peering into the voices of the unseen.',
-  type: 1, // Slash command
-};
+const gazeCommand = new SlashCommandBuilder()
+  .setName('gaze')
+  .setDescription('The bot enters the channel, peering into the voices of the unseen.');
 
 // Command for the bot to leave the voice channel
-const LEAVE_COMMAND = {
-  name: 'leave',
-  description: 'The bot vanishes, ending the magical vision.',
-  type: 1,
-};
+const leaveCommand = new SlashCommandBuilder()
+  .setName('leave')
+  .setDescription('The bot vanishes, ending the magical vision.');
 
 // Command to start recording voices in the channel
-const BEGIN_SCRYING_COMMAND = {
-  name: 'begin_scrying',
-  description: 'Start recording the words spoken, capturing them as if seen through a crystal ball.',
-  type: 1,
-  options: [
-    {
-      name: 'session',
-      description: `The name of the session (up to ${config.sessionNameMaxLength} characters, must be unique)`,
-      type: 3, // STRING type
-      required: true,
-    },
-  ],
-};
+const beginScryingCommand = new SlashCommandBuilder()
+  .setName('begin_scrying')
+  .setDescription('Start recording the words spoken, capturing them as if seen through a crystal ball.')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription(`The name of the session (up to ${config.sessionNameMaxLength} characters, must be unique)`)
+      .setRequired(true)
+      .setMaxLength(config.sessionNameMaxLength)
+  );
 
 // Command to end the recording session
-const END_SCRYING_COMMAND = {
-  name: 'end_scrying',
-  description: 'Cease recording, finalizing the vision.',
-  type: 1,
-};
+const endScryingCommand = new SlashCommandBuilder()
+  .setName('end_scrying')
+  .setDescription('Cease recording, finalizing the vision.');
 
 // Command to list all recorded sessions
-const CONSULT_THE_TEXTS = {
-  name: 'consult_the_texts',
-  description: 'Lists all the scrying sessions saved to the wizards tome.',
-  type: 1,
-};
+const consultTheTextsCommand = new SlashCommandBuilder()
+  .setName('consult_the_texts')
+  .setDescription('Lists all the scrying sessions saved to the wizard\'s tome.');
 
 // Command to receive a summary of a specific session
-const REVEAL_SUMMARY_COMMAND = {
-  name: 'reveal_summary',
-  description: 'Receive a concise vision of the last scrying session.',
-  type: 1,
-  options: [
-    {
-      name: 'session',
-      description: 'The name of the session you wish to summarize.',
-      type: 3,
-      required: true,
-    },
-  ],
-};
+const revealSummaryCommand = new SlashCommandBuilder()
+  .setName('reveal_summary')
+  .setDescription('Receive a concise vision of the last scrying session.')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session you wish to summarize.')
+      .setRequired(true)
+  );
 
 // Command to retrieve the full transcript of a specific session
-const COMPLETE_VISION_COMMAND = {
-  name: 'complete_vision',
-  description: 'Retrieve the full record of the scryed voices, as written by the orb.',
-  type: 1,
-  options: [
-    {
-      name: 'session',
-      description: 'The name of the session you wish to reveal.',
-      type: 3,
-      required: true,
-    },
-  ],
-};
+const completeVisionCommand = new SlashCommandBuilder()
+  .setName('complete_vision')
+  .setDescription('Retrieve the full record of the scryed voices, as written by the orb.')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session you wish to reveal.')
+      .setRequired(true)
+  );
 
 // Command to delete a specific session's recordings and transcripts
-const DELETE_SESSION = {
-  name: 'delete_session',
-  description: 'Deletes all recordings and transcripts for a session. Use with caution!',
-  type: 1,
-  options: [
-    {
-      name: 'session',
-      description: 'The name of the session you wish to delete.',
-      type: 3,
-      required: true,
-    },
-  ],
-};
+const deleteSessionCommand = new SlashCommandBuilder()
+  .setName('delete_session')
+  .setDescription('Deletes all recordings and transcripts for a session. Use with caution!')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session you wish to delete.')
+      .setRequired(true)
+  );
 
 // Command to delete all sessions; requires explicit confirmation
-const PURGE = {
-  name: 'purge',
-  description: 'Deletes all recordings and transcripts for EVERY session. Use with extreme caution!',
-  type: 1,
-  options: [
-    {
-      name: 'confirmation',
-      description: 'Type "y" to delete everything! This cannot be undone!',
-      type: 3,
-      required: true,
-    },
-  ],
-};
+const purgeCommand = new SlashCommandBuilder()
+  .setName('purge')
+  .setDescription('Deletes all recordings and transcripts for EVERY session. Use with extreme caution!')
+  .addStringOption((option) =>
+    option
+      .setName('confirmation')
+      .setDescription('Type "y" to delete everything! This cannot be undone!')
+      .setRequired(true)
+  );
 
-// Command to delete a specific session's recordings and transcripts
-const PROCESS_SESSION = {
-  name: 'process_session',
-  description: 'Transcribe and summarize a session. Used for debugging!',
-  type: 1,
-  options: [
-    {
-      name: 'session',
-      description: 'The name of the session you wish to process.',
-      type: 3,
-      required: true,
-    },
-  ],
-};
+// Command to process a session (for debugging)
+const processSessionCommand = new SlashCommandBuilder()
+  .setName('process_session')
+  .setDescription('Transcribe and summarize a session. Used for debugging!')
+  .addStringOption((option) =>
+    option
+      .setName('session')
+      .setDescription('The name of the session you wish to process.')
+      .setRequired(true)
+  );
 
-// Install the commands globally using the Discord application ID
-InstallGlobalCommands(process.env.APP_ID, [
-  GAZE_COMMAND,
-  LEAVE_COMMAND,
-  BEGIN_SCRYING_COMMAND,
-  END_SCRYING_COMMAND,
-  CONSULT_THE_TEXTS,
-  REVEAL_SUMMARY_COMMAND,
-  COMPLETE_VISION_COMMAND,
-  DELETE_SESSION,
-  PROCESS_SESSION,
-  PURGE,
-]);
+// Add commands to the array
+commands.push(
+  gazeCommand,
+  leaveCommand,
+  beginScryingCommand,
+  endScryingCommand,
+  consultTheTextsCommand,
+  revealSummaryCommand,
+  completeVisionCommand,
+  deleteSessionCommand,
+  purgeCommand,
+  processSessionCommand
+);
+
+// Convert commands to JSON format
+const commandsJSON = commands.map((command) => command.toJSON());
+
+// Register commands with Discord
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+(async () => {
+  try {
+    logger('Started refreshing application (/) commands.', 'info');
+
+    await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: commandsJSON });
+
+    logger('Successfully reloaded application (/) commands.', 'info');
+  } catch (error) {
+    logger(`Error registering commands: ${error.message}`, 'error');
+    logger(`Stack trace: ${error.stack}`, 'error');
+  }
+})();

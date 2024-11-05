@@ -2,8 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import config from '../config/config.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
-import { startRecording, setSessionName, getActiveConnection, setScryingSessionActive, resetSessionState } from '../services/recordingService.js';
-import { clearInactivityTimer } from '../utils/timers.js';
+import { startRecording, setSessionName, getActiveConnection, setScryingSessionActive } from '../services/recordingService.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
 // Directories for storing recordings and transcripts
@@ -17,10 +16,6 @@ const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
  */
 export async function transcribeAudioHandler(interaction) {
   try {
-    // Ensure fresh start by clearing any existing session state and timer
-    resetSessionState();
-    clearInactivityTimer();
-
     // Retrieve the session name provided by the user via the interaction command
     const sessionName = interaction.options.getString('session');
     if (!sessionName) {
