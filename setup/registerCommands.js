@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
 
-import { REST, Routes, ApplicationCommandType, ApplicationCommandOptionType } from 'discord.js';
+import { REST, Routes } from 'discord.js';
 import { SlashCommandBuilder } from '@discordjs/builders';
 import config from '../src/config/config.js';
 import { logger } from '../src/utils/logger.js';
@@ -99,8 +99,7 @@ commands.push(
   beginScryingCommand,
   endScryingCommand,
   consultTheTextsCommand,
-  revealSummaryCommand,
-  completeVisionCommand,
+  revealSummaryCommand,  
   deleteSessionCommand,
   purgeCommand,
   processSessionCommand

@@ -94,7 +94,7 @@ Clone the repository and install dependencies by running the following scripts:
 If you prefer to install manually:
 1. Install server prerequisites:
    ```bash
-   sudo apt update
+   sudo apt update && sudo apt upgrade -y
    sudo apt install -y build-essential ffmpeg python3 python3-pip git
    ```
 
@@ -117,56 +117,54 @@ If you prefer to install manually:
    npm -v
    ```
 
-5. Install FFmpeg and other dependencies:
+5. Install Node.js Dependencies:
    ```bash
-   sudo apt update
-   sudo apt install -y build-essential ffmpeg python3 python3-pip git
+   sudo chown -R $(whoami) MysticNote
+   npm install
    ```
 
-6. Install Node.js Dependencies:
-   ```bash
-   sudo npm install
-   ```
-
-7. Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
+6. Install PyTorch (required for Whisper) using the command specific to your environment from PyTorch's installation page. For example:
    ```bash
    pip3 install torch
    ```
    
-8. Install Whisper:
+7. Install Whisper:
    ```bash
    pip3 install git+https://github.com/openai/whisper.git
    ```
 
-9. Verify Whisper Installation:
+8. Verify Whisper Installation:
    ```bash
    python3 -c "import whisper; print(whisper.load_model('base'))"
    ```
 
-10. Configure Environment Variables; Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
+9. Configure Environment Variables; Create a .env file in the root directory and include your Discord bot token and OpenAI API key:
       ```plaintext
       APP_ID=<YOUR_APP_ID>
       DISCORD_TOKEN=<YOUR_DISCORD_BOT_TOKEN>
       PUBLIC_KEY=<YOUR_PUBLIC_KEY>
       OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
       ```
-11. Configure conf.json settings file:
+10. Configure conf.json settings file:
       ```json
       {
-     "inactivityTimeoutMinutes": 5,
-     "sessionNameMaxLength": 50,
-     "whisperModel": "base",
-     "openAIModel": "gpt-4-turbo",
-     "saveRecordings": true, 
-     "audioQuality": "low"
+      "inactivityTimeoutMinutes": 90,
+      "sessionNameMaxLength": 50,
+      "whisperModel": "small",
+      "openAIModel": "gpt-4o",
+      "saveRecordings": true, 
+      "audioQuality": "low",
+      "logLevel": "info",
+      "logsDirectory": "../bin/logs",
+      "timezone": "local"
       }
       ```
-12. Register the commands:
+11. Register the commands:
       ```bash
-      node register_commands.js
+      node ~/MysticNote/setup/register_commands.js
       ```
 
-13. Start the bot:
+12. Start the bot:
       ```bash
       cd ~/MysticNote/src
       node bot.js
@@ -188,7 +186,6 @@ If you prefer to install manually:
 3. Save the pm2 process list and startup:
    ```bash
    pm2 save
-   pm2 startup
    ```
 
 ### Manual Installation ( Windows )
@@ -241,12 +238,15 @@ If you prefer to install manually:
 8. Configure conf.json settings file:
       ```json
       {
-     "inactivityTimeoutMinutes": 5,
-     "sessionNameMaxLength": 50,
-     "whisperModel": "base",
-     "openAIModel": "gpt-4-turbo",
-     "saveRecordings": true, 
-     "audioQuality": "low"
+     "inactivityTimeoutMinutes": 90,
+      "sessionNameMaxLength": 50,
+      "whisperModel": "small",
+      "openAIModel": "gpt-4o",
+      "saveRecordings": true, 
+      "audioQuality": "low",
+      "logLevel": "debug",
+      "logsDirectory": "../bin/logs",
+      "timezone": "local"
       }
       ```
 9. Register the commands:
@@ -292,51 +292,62 @@ To update the bot, please pull from the git main repository:
 ### `conf.json` Settings
 
 1. **`inactivityTimeoutMinutes`**  
-   Determines the duration, in minutes, for which the bot monitors audio activity during a recording session. If no audio is detected within this timeframe, the session will automatically end due to inactivity.
-
+   Sets the duration (in minutes) for which the bot monitors audio activity during a recording session. If no audio is detected within this timeframe, the session will automatically end due to inactivity.
    - **Type**: Integer  
-   - **Default**: `5`  
-   - **Example**: Setting this to `10` will keep the session open for 10 minutes without audio before ending.
+   - **Default**: `60`  
+   - **Example**: Setting this to `10` keeps the session open for 10 minutes without audio before ending.
 
 2. **`sessionNameMaxLength`**  
-   Specifies the maximum character length allowed for session names, restricting the length of names given to each scrying session.
-
+   Defines the maximum number of characters allowed for session names, limiting the length of names assigned to each scrying session.
    - **Type**: Integer  
    - **Default**: `50`  
-   - **Example**: Increasing this value allows for longer session names.
+   - **Example**: A value of `100` allows longer session names.
 
 3. **`whisperModel`**  
-   Defines the Whisper model used for transcription. Models vary in size and accuracy, with larger models providing better transcription accuracy at the cost of higher computational resources.
-
+   Specifies the Whisper model used for transcription. Larger models provide better accuracy but require more computational resources.
    - **Type**: String  
-   - **Default**: `"base"`  
+   - **Default**: `"small"`  
    - **Options**: `"tiny"`, `"base"`, `"small"`, `"medium"`, `"large"`  
-   - **Example**: Setting this to `"small"` reduces the model size for quicker transcription times.
+   - **Example**: Setting `"tiny"` can improve transcription speed on limited resources.
 
 4. **`openAIModel`**  
-   Specifies the OpenAI language model used for generating session summaries. Larger models, such as those in the GPT-4 series, offer more nuanced summaries but may have higher usage limits or API costs. The selected model will affect the quality, detail, and potential cost of the summary generation.
-
+   Defines the OpenAI model used for generating session summaries. Larger models, such as those in the GPT-4 series, offer more nuanced summaries at a higher cost.
    - **Type**: String  
-   - **Default**: `"gpt-4o"`  
-   - **Options**:
-     - ** Please go here to learn about the available text models: [OpenAI Models](https://platform.openai.com/docs/models/)
-   - **Example**: Setting `"gpt-3.5-turbo"` is suitable if you want a faster, more cost-effective model, particularly for shorter summaries.
-
+   - **Default**: `"gpt-3.5-turbo"`  
+   - **Options**: See available models [here](https://platform.openai.com/docs/models/)  
+   - **Example**: Use `"gpt-3.5-turbo"` for faster, cost-effective summaries.
 
 5. **`saveRecordings`**  
-   Determines whether to keep or delete audio recordings after they have been successfully transcribed and summarized. Set to false if you want to automatically delete recordings, reducing storage use, or set to true if you prefer to retain the original audio files for future reference.
-
+   Controls whether audio recordings are kept or deleted after transcription and summary completion. Set to `false` to automatically delete recordings, reducing storage.
    - **Type**: Boolean  
-   - **Default**: `"true"`  
-   - **Example**: `"False` if you want to automatically delete recordings after they have been transcribed.
+   - **Default**: `true`  
+   - **Example**: `false` automatically deletes recordings post-transcription.
 
 6. **`audioQuality`**  
-   Controls the quality of audio recordings for transcription, with options to balance between audio clarity and file size. Higher quality settings provide clearer audio but increase storage use. Lower quality is generally sufficient for transcription accuracy while minimizing file size.
-
+   Determines the quality of audio recordings, balancing file size and clarity. Higher quality settings improve clarity but increase file size.
    - **Type**: String  
-   - **Default**: `"low"`  
+   - **Default**: `"medium"`  
    - **Options**: `"low"`, `"medium"`, `"high"`  
-   - **Example**: `"high"` for maximum audio clarity if storage space is not a concern, or "low" to minimize file size while maintaining transcribable quality.
+   - **Example**: `"high"` maximizes clarity; `"low"` minimizes file size.
+
+7. **`logLevel`**  
+   Sets the level of detail in the logs.
+   - **Type**: String  
+   - **Default**: `"info"`  
+   - **Options**: `"error"`, `"warn"`, `"info"`, `"verbose"`, `"debug"`  
+   - **Example**: `"debug"` includes the most detailed logging, helpful for troubleshooting.
+
+8. **`logsDirectory`**  
+   Specifies the directory for storing log files.
+   - **Type**: String  
+   - **Default**: `"../../bin/logs"`  
+   - **Example**: Setting to `"/var/logs/myapp"` stores logs in a system directory.
+
+9. **`timezone`**  
+   Sets the timezone for timestamps. Use `"local"` for the system's local time zone or provide an IANA timezone string.
+   - **Type**: String  
+   - **Default**: `"local"`  
+   - **Example**: `"America/New_York"` for Eastern Time in the United States.
 
 ---
 
@@ -368,17 +379,12 @@ The bot provides a collection of commands to interact with voice channels and ma
    - **Options**: 
      - `session`: The name of the session you wish to summarize.
 
-7. **`/complete_vision`**
-   - Retrieve the full record of the scryed voices, as written by the orb.
-   - **Options**: 
-     - `session`: The name of the session you wish to reveal.
-
-8. **`/delete_session`**
+7. **`/delete_session`**
    - Deletes all recordings and transcripts for a specific session. Use with caution!
    - **Options**: 
      - `session`: The name of the session you wish to delete.
 
-9. **`/purge`**
+8. **`/purge`**
    - Deletes all recordings and transcripts for every session. Use with extreme caution!
    - **Options**: 
      - `confirmation`: Type "y" to delete everything! This cannot be undone!
@@ -403,13 +409,10 @@ Here's an example of how you might use the bot commands to record, summarize, an
 5. **Summarize a Session**:  
    - To get a summary of a recorded session, use `/reveal_summary session:YourSessionName`.
 
-6. **Retrieve the Full Transcript**:  
-   - Run `/complete_vision session:YourSessionName` to access the full transcription of the session.
-
-7. **Delete a Session**:  
+6. **Delete a Session**:  
    - Use `/delete_session session:YourSessionName` if you no longer need the recording and transcription for a specific session.
 
-8. **Clear All Sessions**:  
+7. **Clear All Sessions**:  
    - With caution, use `/purge confirmation:y` to delete all recordings and transcriptions from every session.
 
 

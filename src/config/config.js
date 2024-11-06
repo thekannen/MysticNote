@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from '../utils/logger.js';
 
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -22,7 +21,7 @@ try {
   // Provide default values for optional properties
   const defaultConfig = {
     botVersion: '1.0.0',
-    inactivityTimeoutMinutes: 30,
+    inactivityTimeoutMinutes: 60,
     sessionNameMaxLength: 50,
     whisperModel: 'small',
     openAIModel: 'gpt-3.5-turbo',
@@ -31,6 +30,7 @@ try {
     verbose: false,
     logLevel: 'info',
     logsDirectory: '../../bin/logs',
+    timezone: 'local',
   };
 
   // Merge default config with user config
@@ -112,11 +112,6 @@ try {
     );
   }
 
-  // verbose should be a boolean
-  if (typeof config.verbose !== 'boolean') {
-    throw new Error('Configuration property "verbose" must be a boolean.');
-  }
-
   // Validate logLevel against allowed values
   const validLogLevels = ['error', 'warn', 'info', 'verbose', 'debug'];
   if (
@@ -135,15 +130,38 @@ try {
   ) {
     throw new Error('Configuration property "logsDirectory" must be a non-empty string.');
   }
-} catch (error) {
-  if (error.code === 'ENOENT') {
-    logger(`Configuration file not found at ${configPath}`, 'error');
-  } else if (error instanceof SyntaxError) {
-    logger(`Syntax error in configuration file: ${error.message}`, 'error');
-  } else {
-    logger(`Error loading configuration: ${error.message}`, 'error');
+
+  // Define the default value if not set
+  const defaultTimezone = 'local';
+
+  // Ensure timezone is set, default to 'local' if not
+  config.timezone = config.timezone ? config.timezone : defaultTimezone;
+
+  // Function to validate timezone
+  function isValidTimeZone(tz) {
+    if (tz.toLowerCase() === 'local') {
+      return true;
+    }
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tz });
+      return true;
+    } catch (ex) {
+      return false;
+    }
   }
-  logger(`Stack trace: ${error.stack}`, 'error');
+
+  // Validate the timezone
+  if (typeof config.timezone !== 'string' || config.timezone.trim() === '') {
+    throw new Error('Configuration property "timezone" must be a non-empty string.');
+  }
+
+  if (!isValidTimeZone(config.timezone)) {
+    throw new Error(
+      'Configuration property "timezone" must be "local" or a valid IANA timezone string (e.g., "America/New_York").'
+    );
+  }
+  
+} catch (error) {
   process.exit(1); // Exit the process to prevent further issues
 }
 
