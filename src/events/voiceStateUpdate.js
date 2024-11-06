@@ -16,7 +16,7 @@ export async function handleVoiceStateUpdate(oldState, newState) {
     // Check if the bot is in the voice channel
     const client = newState.client;
     if (!voiceChannel || !voiceChannel.members.has(client.user.id)) {
-      logger('Bot is not connected to the channel.', 'info');
+      logger('Bot is not connected to the channel.', 'warn');
       return;
     }
 

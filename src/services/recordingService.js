@@ -361,7 +361,7 @@ export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
       if (!userRecordings[userId]) {
-        logger(`No active recording found for userId: ${userId}`, 'info');
+        logger(`No active recording found for userId: ${userId}`, 'debug');
         resolve(null);
         return;
       }
@@ -382,7 +382,7 @@ export async function stopRecording(userId = null) {
             delete userRecordings[userId];
             logger(
               `Stopped recording for userId: ${userId}, saved as ${recordingData.filePath}`,
-              'info'
+              'debug'
             );
             resolve({
               filePath: recordingData.filePath,
@@ -399,7 +399,7 @@ export async function stopRecording(userId = null) {
       } else {
         logger(
           `FFmpeg process for userId: ${userId} is no longer active.`,
-          'info'
+          'debug'
         );
         resolve(null);
       }
@@ -424,7 +424,7 @@ export async function stopRecording(userId = null) {
                   delete userRecordings[activeUserId];
                   logger(
                     `Stopped recording for userId: ${activeUserId}, saved as ${recordingData.filePath}`,
-                    'info'
+                    'debug'
                   );
                   stopResolve({
                     filePath: recordingData.filePath,
@@ -441,7 +441,7 @@ export async function stopRecording(userId = null) {
             } else {
               logger(
                 `FFmpeg process for userId: ${activeUserId} is no longer active.`,
-                'info'
+                'debug'
               );
               stopResolve(null);
             }

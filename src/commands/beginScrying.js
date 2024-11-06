@@ -123,7 +123,7 @@ export async function execute(interaction) {
     // Create directories for the session's recordings and transcripts
     fs.mkdirSync(sessionFolder, { recursive: true });
     fs.mkdirSync(transcriptFolder, { recursive: true });
-    logger(`Created directories for session: ${sessionName}`, 'info');
+    logger(`Created directories for session: ${sessionName}`, 'verbose');
 
     // Loop through each member in the voice channel to initiate recording
     for (const [memberId, member] of members) {

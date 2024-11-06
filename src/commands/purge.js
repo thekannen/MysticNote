@@ -46,7 +46,7 @@ export async function execute(interaction) {
         fs.readdirSync(dir).forEach((folder) => {
           const fullPath = path.join(dir, folder);
           fs.rmSync(fullPath, { recursive: true, force: true });
-          logger(`Deleted folder "${fullPath}".`, 'info');
+          logger(`Deleted folder "${fullPath}".`, 'verbose');
         });
       }
     });
