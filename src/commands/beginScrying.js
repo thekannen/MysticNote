@@ -137,7 +137,6 @@ export async function execute(interaction) {
 
       // Start recording for each user in the channel
       await startRecording(conn, memberId, username, filePath);
-      logger(`Started recording for user ${username} (ID: ${memberId})`, 'info');
     }
 
     // Notify the user that the recording has started

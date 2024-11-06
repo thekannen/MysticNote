@@ -28,7 +28,7 @@ def load_config():
 
 def transcribe_with_timestamps(file_path, model_name):
     """
-    Transcribes an audio file, providing word-level timestamps if available.
+    Transcribes an audio file, providing word-level timestamps.
 
     Parameters:
         file_path (str): The path to the audio file to transcribe.
@@ -44,30 +44,24 @@ def transcribe_with_timestamps(file_path, model_name):
         # Perform the transcription with Whisper
         result = model.transcribe(
             file_path, 
-            condition_on_previous_text=False
+            condition_on_previous_text=False,
+            word_timestamps=True,  # Enable word-level timestamps
+            verbose=False,
+            language='en'
         )
 
-        # Collect transcription segments with timestamps
+        # Collect transcription segments with word-level timestamps
         segments = []
         for segment in result["segments"]:
-            # If word-level timestamps are enabled, process individual words
-            if "words" in segment:
-                for word_info in segment["words"]:
-                    # Check that word info includes start, end, and text keys
-                    if "start" in word_info and "end" in word_info and "text" in word_info:
-                        segments.append({
-                            "start": word_info["start"],
-                            "end": word_info["end"],
-                            "text": word_info["text"]
-                        })
-            else:
-                # Fallback: use the entire segment if word-level timestamps are unavailable
-                segments.append({
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": segment["text"]
-                })
-
+            # Process individual words
+            for word_info in segment["words"]:
+                # Check that word info includes start, end, and text keys
+                if "start" in word_info and "end" in word_info and "word" in word_info:
+                    segments.append({
+                        "start": word_info["start"],
+                        "end": word_info["end"],
+                        "text": word_info["word"]
+                    })
         return segments
     except Exception as e:
         print(f"Error during transcription: {e}", file=sys.stderr)
@@ -91,8 +85,8 @@ if __name__ == "__main__":
     # Load the configuration
     config = load_config()
 
-    # Get the model name from the config, defaulting to "base"
-    model_name = config.get("whisperModel", "base")
+    # Get the model name from the config, defaulting to "medium"
+    model_name = config.get("whisperModel", "medium")
 
     # Run the transcription function
     segments = transcribe_with_timestamps(file_path, model_name)

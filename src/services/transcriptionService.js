@@ -1,5 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
+import zlib from 'zlib';
+import { promisify } from 'util';
 import { transcribeFileWithWhisper } from './whisperService.js';
 import { generateSummary } from './summaryService.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
@@ -10,6 +12,10 @@ import { DateTime } from 'luxon';
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
+// Promisify zlib functions
+const gunzip = promisify(zlib.gunzip);
+const gzip = promisify(zlib.gzip);
+
 // Set to track unique attendees
 const attendees = new Set();
 
@@ -19,6 +25,50 @@ function addAttendee(username) {
 
 export function getAttendees() {
   return Array.from(attendees);
+}
+
+/**
+ * Reads a JSON or Gzipped JSON file.
+ *
+ * @param {string} filePath - Path to the JSON or JSON.gz file.
+ * @returns {Promise<Object>} - Parsed JSON data.
+ */
+async function readJsonFile(filePath) {
+  try {
+    const buffer = await fs.readFile(filePath);
+    if (filePath.endsWith('.gz')) {
+      const decompressed = await gunzip(buffer);
+      return JSON.parse(decompressed.toString('utf-8'));
+    } else {
+      return JSON.parse(buffer.toString('utf-8'));
+    }
+  } catch (error) {
+    logger(`Error reading JSON file ${filePath}: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
+/**
+ * Writes a JSON file, optionally compressing it.
+ *
+ * @param {string} filePath - Path to the JSON or JSON.gz file.
+ * @param {Object} data - Data to write.
+ * @param {boolean} compress - Whether to compress the file.
+ * @returns {Promise<void>}
+ */
+async function writeJsonFile(filePath, data, compress = false) {
+  try {
+    const jsonString = JSON.stringify(data, null, 2);
+    if (compress) {
+      const compressed = await gzip(jsonString);
+      await fs.writeFile(`${filePath}.gz`, compressed);
+    } else {
+      await fs.writeFile(filePath, jsonString, 'utf-8');
+    }
+  } catch (error) {
+    logger(`Error writing JSON file ${filePath}: ${error.message}`, 'error');
+    throw error;
+  }
 }
 
 /**
@@ -50,15 +100,30 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     return { summary: null, transcriptionFile: null };
   }
 
+  // Audio settings used during recording
+  const audioSettings = {
+    rate:
+      config.audioQuality === 'high'
+        ? '48000'
+        : config.audioQuality === 'medium'
+        ? '24000'
+        : '16000',
+    channels: config.audioQuality === 'high' ? '2' : '1',
+    codec: 'pcm_s16le',
+  };
+
   let transcriptions = [];
 
   for (const file of sessionFiles) {
     const filePath = path.join(sessionFolderPath, file);
 
-    // Extract username and timestamp from the file name
-    const { username, fileStartTime } = parseFileName(file);
+    // Skip timestamp files
+    if (file.endsWith('_timestamps.json') || file.endsWith('_timestamps.json.gz')) continue;
 
-    if (!username || !fileStartTime) {
+    // Extract username from the file name
+    const { username } = parseFileName(file);
+
+    if (!username) {
       logger(`Skipping file due to parsing error: ${file}`, 'warn');
       continue;
     }
@@ -66,28 +131,65 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     // Track this user as an attendee
     addAttendee(username);
 
+    // Read the timestamps
+    let timestampFilePath = filePath.replace('.wav', '_timestamps.json');
+    let isCompressed = false;
+
+    // Check if compressed timestamp file exists
+    try {
+      await fs.access(`${timestampFilePath}.gz`);
+      timestampFilePath = `${timestampFilePath}.gz`;
+      isCompressed = true;
+      verboseLog(`Found compressed timestamps for ${username} at ${timestampFilePath}`);
+    } catch {
+      verboseLog(`No compressed timestamps found for ${username}, using uncompressed ${timestampFilePath}`);
+    }
+
+    let timestampsData = null;
+    try {
+      timestampsData = await readJsonFile(timestampFilePath);
+    } catch (error) {
+      logger(`Failed to read timestamps for ${file}: ${error.message}`, 'error');
+      continue;
+    }
+
     // Transcribe the audio file
     const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
 
     if (transcriptionSegments && transcriptionSegments.length > 0) {
-      transcriptions.push(
-        ...transcriptionSegments.map((segment) => ({
-          start: fileStartTime.plus({ seconds: segment.start }),
-          end: fileStartTime.plus({ seconds: segment.end }),
-          username,
-          text: segment.text.trim(),
-        }))
+      // Adjust segment times using positions
+      const adjustedSegments = adjustTranscriptionSegments(
+        transcriptionSegments,
+        timestampsData,
+        username,
+        audioSettings
       );
+
+      transcriptions.push(...adjustedSegments);
       verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
     } else {
       verboseLog(`No transcription segments found for ${filePath}`, 'warn');
     }
 
+    // Optionally, compress the timestamps.json if not already compressed
+    if (!isCompressed) {
+      try {
+        await writeJsonFile(timestampFilePath, timestampsData, true);
+        await fs.unlink(timestampFilePath); // Remove the uncompressed file
+        verboseLog(`Compressed timestamps for ${username} to ${timestampFilePath}.gz`);
+      } catch (error) {
+        logger(`Failed to compress timestamps for ${username}: ${error.message}`, 'error');
+      }
+    }
+  }
+
+  // Check if any transcriptions were generated
   if (transcriptions.length === 0) {
     logger(`No transcriptions were generated for session: ${sessionName}`, 'warn');
     return { summary: null, transcriptionFile: null };
   }
 
+  // Aggregate and format transcriptions
   const aggregatedTranscriptions = aggregateTranscriptions(transcriptions);
   const combinedTranscription = formatTranscription(aggregatedTranscriptions);
 
@@ -108,6 +210,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
     for (const file of sessionFiles) {
       const filePath = path.join(sessionFolderPath, file);
       try {
+        // Delete the WAV files after transcription if not needed
         await fs.unlink(filePath);
         logger(`Deleted recording file: ${filePath}`, 'info');
       } catch (error) {
@@ -120,10 +223,10 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 }
 
 /**
- * Parses the file name to extract the username and the recording start time.
+ * Parses the file name to extract the username.
  *
  * @param {string} fileName - The name of the file.
- * @returns {{username: string|null, fileStartTime: DateTime|null}} - The username and start time.
+ * @returns {{username: string|null}} - The username.
  */
 function parseFileName(fileName) {
   try {
@@ -131,30 +234,112 @@ function parseFileName(fileName) {
     const parts = baseName.split('_');
     if (parts.length < 4) {
       logger(`Invalid file name format: ${fileName}`, 'warn');
-      return { username: null, fileStartTime: null };
+      return { username: null };
     }
 
     // Expected format: audio_username_userId_timestamp.wav
     const username = parts[1];
-    const userId = parts[2];
-    const timestampString = parts.slice(3).join('_'); // In case the username contains underscores
 
-    // Parse the timestamp using the configured timezone
-    const timezone = config.timezone && config.timezone !== 'local' ? config.timezone : undefined;
-    const fileStartTime = timezone
-      ? DateTime.fromFormat(timestampString, "yyyy-MM-dd'T'HH-mm-ss", { zone: timezone })
-      : DateTime.fromFormat(timestampString, "yyyy-MM-dd'T'HH-mm-ss");
-
-    if (!fileStartTime.isValid) {
-      logger(`Invalid timestamp in file name: ${fileName}`, 'error');
-      return { username: null, fileStartTime: null };
-    }
-
-    return { username, fileStartTime };
+    return { username };
   } catch (error) {
     logger(`Error parsing file name ${fileName}: ${error.message}`, 'error');
-    return { username: null, fileStartTime: null };
+    return { username: null };
   }
+}
+
+/**
+ * Adjusts transcription segments based on system times.
+ *
+ * @param {Array} segments - The transcription segments.
+ * @param {Object} timestampsData - The timestamps data from recording.
+ * @param {string} username - The username of the speaker.
+ * @param {Object} audioSettings - The audio settings used during recording.
+ * @returns {Array} - The adjusted transcription segments.
+ */
+function adjustTranscriptionSegments(segments, timestampsData, username, audioSettings) {
+  const { timestamps } = timestampsData;
+
+  if (!timestamps || timestamps.length === 0) {
+    logger(`No timestamps available for ${username}`, 'error');
+    return [];
+  }
+
+  // Audio settings
+  const sampleRate = parseInt(audioSettings.rate);
+  const channels = parseInt(audioSettings.channels);
+  const bytesPerSample = 2; // 16-bit audio (2 bytes per sample)
+  const bytesPerSecond = sampleRate * channels * bytesPerSample;
+
+  const adjustedSegments = segments.map((segment, index) => {
+    // Calculate byte positions for segment start and end
+    const startPosition = segment.start * bytesPerSecond;
+    const endPosition = segment.end * bytesPerSecond;
+
+    //verboseLog(`Mapping segment ${index + 1} for ${username}: StartPosition=${startPosition}, EndPosition=${endPosition}`);
+
+    // Map positions to system times
+    const wallClockStartTime = mapPositionToWallClockTime(startPosition, timestamps);
+    const wallClockEndTime = mapPositionToWallClockTime(endPosition, timestamps);
+
+    if (wallClockStartTime && wallClockEndTime) {
+      verboseLog(`Mapped times for segment ${index + 1} of ${username}: Start=${wallClockStartTime}, End=${wallClockEndTime}`);
+      return {
+        start: DateTime.fromMillis(wallClockStartTime),
+        end: DateTime.fromMillis(wallClockEndTime),
+        username: username,
+        text: segment.text.trim(),
+      };
+    } else {
+      logger(`Could not map positions to system times for ${username} in segment ${index + 1}`, 'warn');
+      return null;
+    }
+  });
+
+  // Filter out any null entries
+  return adjustedSegments.filter(Boolean);
+}
+
+/**
+ * Maps a byte position to system time using recorded timestamps.
+ *
+ * @param {number} position - The byte position in the audio file.
+ * @param {Array} timestamps - The recorded timestamps with positions.
+ * @returns {number|null} - The corresponding system time in milliseconds.
+ */
+function mapPositionToWallClockTime(position, timestamps) {
+  // Find the two timestamp entries surrounding the position
+  for (let i = 1; i < timestamps.length; i++) {
+    const prevEntry = timestamps[i - 1];
+    const currentEntry = timestamps[i];
+
+    if (position >= prevEntry.position && position <= currentEntry.position) {
+      // Linear interpolation between the two positions
+      const ratio =
+        (position - prevEntry.position) /
+        (currentEntry.position - prevEntry.position);
+      const timeDiff = currentEntry.time - prevEntry.time;
+      const mappedTime = prevEntry.time + ratio * timeDiff;
+
+      //verboseLog(`Mapping position=${position} between positions=${prevEntry.position} and ${currentEntry.position} to time=${mappedTime}`);
+
+      return mappedTime;
+    }
+  }
+
+  // If position is before the first timestamp
+  if (position < timestamps[0].position) {
+    //verboseLog(`Position=${position} is before the first timestamp. Mapping to first time=${timestamps[0].time}`);
+    return timestamps[0].time;
+  }
+
+  // If position is after the last timestamp
+  if (position > timestamps[timestamps.length - 1].position) {
+    //verboseLog(`Position=${position} is after the last timestamp. Mapping to last time=${timestamps[timestamps.length - 1].time}`);
+    return timestamps[timestamps.length - 1].time;
+  }
+
+  verboseLog(`Position=${position} could not be mapped.`);
+  return null; // Position could not be mapped
 }
 
 /**
@@ -166,6 +351,8 @@ function parseFileName(fileName) {
 function aggregateTranscriptions(transcriptions) {
   // Sort all transcription segments by start time
   transcriptions.sort((a, b) => a.start.toMillis() - b.start.toMillis());
+
+  verboseLog(`Transcriptions sorted by start time.`);
 
   return transcriptions;
 }
@@ -184,5 +371,4 @@ function formatTranscription(transcriptions) {
       return `[${start} - ${end}] ${entry.username}: ${entry.text}`;
     })
     .join('\n');
-}
 }

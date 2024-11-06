@@ -58,7 +58,7 @@ const {
 const tokenizer = encoding_for_model(config.openAIModel || 'gpt-3.5-turbo');
 
 // Define the prompt template
-const promptTemplate = `Please provide a concise summary of the following conversation excerpt, focusing on key points and events.
+const promptTemplate = `Please provide a concise summary of the following conversation excerp, as well as providing key points and events in a bulleted format.
 
 Conversation Excerpt:
 `;

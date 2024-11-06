@@ -1,11 +1,14 @@
+// recordingService.js
+
 'use strict';
 
-import { spawn, exec } from 'child_process';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import prism from 'prism-media';
 import path from 'path';
 import config from '../config/config.js';
 import { verboseLog, logger } from '../utils/logger.js';
+import { endScryingCore } from './endScryingCore.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName, generateTimestamp, getClient } from '../utils/common.js';
 import { execute } from '../commands/endScrying.js';
@@ -14,7 +17,6 @@ const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
 let connection = null;
 let userRecordings = {}; // Stores recording data for each user
-let activeUsers = new Set(); // Tracks users actively being recorded
 let scryingChannelId = null;
 let currentSessionName = null;
 let isScryingSessionActive = false;
@@ -22,7 +24,9 @@ let isScryingSessionActive = false;
 // Sets the inactivity limit in milliseconds based on configuration
 const INACTIVITY_LIMIT = config.inactivityTimeoutMinutes * 60 * 1000;
 
-// Sets the active voice connection
+/**
+ * Sets the active voice connection
+ */
 export function setConnection(conn) {
   connection = conn;
   logger('Connection established and stored in recordingService', 'info');
@@ -35,23 +39,31 @@ export function setConnection(conn) {
   }`);
 }
 
-// Retrieves the active connection for a given guild
+/**
+ * Retrieves the active connection for a given guild
+ */
 export function getActiveConnection(guildId) {
   verboseLog(`Getting active connection for guildId: ${guildId}`);
   return connection?.joinConfig.guildId === guildId ? connection : null;
 }
 
-// Clears the active connection when leaving the channel
+/**
+ * Clears the active connection when leaving the channel
+ */
 export function clearConnection() {
   connection = null;
   logger('Connection cleared.', 'info');
   clearInactivityTimer(); // Stops the timer when connection is cleared
 }
 
+/**
+ * Ends the scrying session due to inactivity
+ */
 async function endScryingSession() {
   if (isScryingSessionActive) {
-    verboseLog('Ending scrying session due to inactivity timer.');
+    verboseLog('Ending scrying session due to inactivity timer.', 'info');
     const client = getClient();
+    const scryingChannelId = getScryingChannelId(); // Function to get the channel ID
     const channel = client.channels.cache.get(scryingChannelId);
 
     if (!channel) {
@@ -65,33 +77,45 @@ async function endScryingSession() {
     await channel.send(
       `The scrying session has ended due to ${config.inactivityTimeoutMinutes} minutes of inactivity.`
     );
-    await execute(null, channel);
+
+    // Call the core function instead of execute
+    await endScryingCore(channel);
 
     logger('Scrying session ended due to inactivity.', 'info');
   } else {
-    verboseLog('Attempted to end scrying session, but no active session found.');
+    verboseLog('Attempted to end scrying session, but no active session found.', 'info');
   }
 }
 
-// Helper to retrieve the active scrying channel ID
+export { endScryingSession };
+
+/**
+ * Helper to retrieve the active scrying channel ID
+ */
 export function getScryingChannelId() {
   verboseLog(`Getting active scrying channel ID: ${scryingChannelId}`);
   return scryingChannelId;
 }
 
-// Sets the session name for the current recording
+/**
+ * Sets the session name for the current recording
+ */
 export function setSessionName(sessionName) {
   currentSessionName = sessionName;
   verboseLog(`Session name set to: ${currentSessionName}`);
 }
 
-// Retrieves the current session name
+/**
+ * Retrieves the current session name
+ */
 export function getSessionName() {
   verboseLog(`Retrieving current session name: ${currentSessionName}`);
   return currentSessionName;
 }
 
-// Toggles scrying session state and inactivity timer
+/**
+ * Toggles scrying session state and manages the inactivity timer
+ */
 export function setScryingSessionActive(isActive, channelId = null) {
   isScryingSessionActive = isActive;
   scryingChannelId = channelId;
@@ -107,12 +131,25 @@ export function setScryingSessionActive(isActive, channelId = null) {
   }
 }
 
-// Checks if the scrying session is currently active
+/**
+ * Checks if the scrying session is currently active
+ */
 export function isScryingSessionOngoing() {
   verboseLog(`Checking if scrying session is ongoing: ${isScryingSessionActive}`);
   return isScryingSessionActive;
 }
 
+/**
+ * Handles global audio activity to reset the inactivity timer
+ */
+function handleGlobalAudioActivity() {
+  resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
+  // logger('Inactivity timer reset due to audio activity from any user.', 'debug');
+}
+
+/**
+ * Starts recording for a user
+ */
 export async function startRecording(conn, userId, username) {
   // Declare variables at the function level
   let isAudioActive = false;
@@ -156,17 +193,6 @@ export async function startRecording(conn, userId, username) {
 
   const startTime = process.hrtime.bigint();
 
-  const debugInterval = setInterval(() => {
-    const elapsedTime = (process.hrtime.bigint() - startTime) / 1000000n;
-    const realElapsedSeconds = Number(elapsedTime) / 1000;
-    logger(
-      `Debug: Real elapsed time: ${realElapsedSeconds.toFixed(
-        2
-      )} seconds, Expected WAV file length: ~${realElapsedSeconds.toFixed(2)} seconds`,
-      'debug'
-    );
-  }, 5000);
-
   try {
     const userStream = conn.receiver.subscribe(userId, { end: 'manual', mode: 'opus' });
     const pcmStream = userStream.pipe(opusDecoder);
@@ -174,8 +200,6 @@ export async function startRecording(conn, userId, username) {
     const ffmpegProcess = spawn('ffmpeg', [
       '-hide_banner',
       '-y', // Overwrite output if exists
-      '-use_wallclock_as_timestamps',
-      'true', // Synchronize timestamps with wall clock
       '-f',
       's16le', // Set input format to raw PCM
       '-ar',
@@ -186,6 +210,8 @@ export async function startRecording(conn, userId, username) {
       'pipe:0', // Read from standard input
       '-af',
       'aresample=async=1',
+      '-use_wallclock_as_timestamps',
+      '1', // Synchronize timestamps with wall clock
       filePath, // Output file path
     ]);
 
@@ -202,10 +228,9 @@ export async function startRecording(conn, userId, username) {
       verboseLog('Initial silence buffer written to initiate recording.');
     }
 
-    // Reset inactivity timer when recording starts
-    resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
-
     pcmStream.pipe(ffmpegProcess.stdin);
+
+    const recordingStartTime = Date.now(); // Wall clock time when recording starts
 
     // Store recording data for cleanup later
     userRecordings[userId] = {
@@ -213,47 +238,41 @@ export async function startRecording(conn, userId, username) {
       userStream: userStream,
       pcmStream: pcmStream,
       hasCloseHandler: false,
-      debugInterval: debugInterval,
       startTime: startTime,
       filePath: filePath,
       username: username,
       isAudioActive: isAudioActive,
       silenceTailTimer: silenceTailTimer,
+      timestamps: [],
+      recordingStartTime: recordingStartTime,
+      bytesReceived: 0,
     };
 
+    const recordingData = userRecordings[userId]; // For easier access
+    recordingData.bytesReceived = 0; // Initialize bytesReceived
+
     // Ensure 'close' event handler is only attached once
-    if (!userRecordings[userId].hasCloseHandler) {
-      userRecordings[userId].hasCloseHandler = true;
+    if (!recordingData.hasCloseHandler) {
+      recordingData.hasCloseHandler = true;
 
       ffmpegProcess.on('close', () => {
         logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
-        activeUsers.delete(userId);
-        clearInterval(debugInterval);
 
-        exec(
-          `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
-          (err, stdout) => {
-            if (err) {
-              verboseLog(`Error retrieving WAV file duration: ${err.message}`);
-              return;
-            }
-            const wavDuration = parseFloat(stdout.trim());
-            const finalElapsedTime =
-              Number(process.hrtime.bigint() - startTime) / 1000000000;
-            logger(
-              `Debug Complete: Real elapsed time: ${finalElapsedTime.toFixed(
-                2
-              )} seconds, Actual WAV file length: ${wavDuration.toFixed(2)} seconds`,
-              'debug'
-            );
-          }
-        );
+        // Write timestamps to a JSON file
+        const timestampData = {
+          timestamps: recordingData.timestamps,
+          recordingStartTime: recordingData.recordingStartTime,
+        };
+        const timestampFilePath = filePath.replace('.wav', '_timestamps.json');
+        fs.writeFileSync(timestampFilePath, JSON.stringify(timestampData), 'utf-8');
+        verboseLog(`Timestamps saved for ${username} at ${timestampFilePath}`);
+
+        // Clean up
+        delete userRecordings[userId];
       });
 
       ffmpegProcess.on('error', (error) => {
         logger(`FFmpeg error for user ${username}: ${error.message}`, 'error');
-        activeUsers.delete(userId);
-        clearInterval(debugInterval);
       });
 
       ffmpegProcess.on('exit', (code, signal) => {
@@ -264,7 +283,17 @@ export async function startRecording(conn, userId, username) {
       });
     }
 
+    // Monitor audio activity and reset inactivity timer globally
     pcmStream.on('data', (chunk) => {
+      const currentTime = Date.now(); // Current system time in milliseconds
+      recordingData.bytesReceived += chunk.length; // **Only one increment**
+
+      // Record the timestamp and position
+      recordingData.timestamps.push({
+        time: currentTime, // System time
+        position: recordingData.bytesReceived, // Cumulative bytes received
+      });
+
       // Calculate volume correctly using 16-bit signed integers
       const sampleCount = chunk.length / 2;
       let sum = 0;
@@ -273,62 +302,64 @@ export async function startRecording(conn, userId, username) {
         sum += val * val;
       }
       const volume = Math.sqrt(sum / sampleCount);
-      const VOLUME_THRESHOLD = 2000; // Adjusted threshold after correcting calculation
+      const VOLUME_THRESHOLD = 2000; // Adjust threshold as needed
       const SILENCE_TAIL_DURATION = 1000; // Time in ms before treating silence as end of audio
 
       if (volume > VOLUME_THRESHOLD) {
         if (!isAudioActive) {
           isAudioActive = true;
+          logger(`Audio became active for user ${username}.`, 'debug');
         }
 
         if (silenceTailTimer) {
           clearTimeout(silenceTailTimer);
           silenceTailTimer = null;
-          logger('DEBUGGING: Silence tail timer cleared as audio resumed.', 'debug');
+          logger('Silence tail timer cleared due to audio activity.', 'debug');
         }
 
-         // **Reset the inactivity timer when audio is active**
-        resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
-        logger('Inactivity timer reset due to audio activity.', 'debug');
+        // Reset inactivity timer globally
+        handleGlobalAudioActivity();
       } else if (isAudioActive && !silenceTailTimer) {
-        logger('DEBUGGING: Volume below threshold, starting silence tail timer.', 'debug');
-
+        // Start silence tail timer
         silenceTailTimer = setTimeout(() => {
           isAudioActive = false; // Mark audio as inactive
           silenceTailTimer = null; // Clear the timer
           logger(
-            'DEBUGGING: Silence tail timer expired; treating as end of audio. Setting isAudioActive to false.',
+            `Silence tail timer expired for user ${username}; marking as inactive.`,
             'debug'
           );
         }, SILENCE_TAIL_DURATION);
       }
-
-      logger(
-        `DEBUGGING: End of chunk processing. isAudioActive=${isAudioActive}, silenceTailTimer=${!!silenceTailTimer}`,
-        'debug'
-      );
     });
 
+    // Monitor stream end events
     pcmStream.on('end', () => {
-      logger('DEBUGGING: Ending PCM stream!', 'debug');
+      logger(`PCM stream ended for user ${username}`, 'debug');
       // Clear any remaining silence tail timer on stream end
       if (silenceTailTimer) {
         clearTimeout(silenceTailTimer);
         silenceTailTimer = null;
       }
-      clearInterval(debugInterval);
       pcmStream.removeAllListeners('data');
-      // Consider whether to reset or leave the inactivity timer unchanged
     });
 
-    activeUsers.add(userId);
+    userStream.on('end', () => {
+      logger(`User stream ended for user ${username}`, 'debug');
+    });
+
+    userStream.on('close', () => {
+      logger(`User stream closed for user ${username}`, 'debug');
+    });
+
     logger(`Started recording for user ${username} (ID: ${userId})`, 'info');
   } catch (error) {
     logger(`Failed to start recording for user ${username}: ${error}`, 'error');
   }
 }
 
-// Stops recording for a specified user or all users, handling the cleanup of FFmpeg processes
+/**
+ * Stops recording for a specified user or all users, handling the cleanup of FFmpeg processes
+ */
 export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
@@ -351,9 +382,7 @@ export async function stopRecording(userId = null) {
 
           // Wait for FFmpeg process to exit
           recordingData.ffmpegProcess.once('close', () => {
-            clearInterval(recordingData.debugInterval);
             delete userRecordings[userId];
-            activeUsers.delete(userId);
             logger(
               `Stopped recording for userId: ${userId}, saved as ${recordingData.filePath}`,
               'info'
@@ -395,9 +424,7 @@ export async function stopRecording(userId = null) {
 
                 // Wait for FFmpeg process to exit
                 recordingData.ffmpegProcess.once('close', () => {
-                  clearInterval(recordingData.debugInterval);
                   delete userRecordings[activeUserId];
-                  activeUsers.delete(activeUserId);
                   logger(
                     `Stopped recording for userId: ${activeUserId}, saved as ${recordingData.filePath}`,
                     'info'
@@ -427,8 +454,6 @@ export async function stopRecording(userId = null) {
 
       Promise.all(stopPromises).then((results) => {
         logger('All active recordings have been stopped.', 'info');
-        // Reset inactivity timer instead of clearing it
-        resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
         resolve(results);
       });
     }
