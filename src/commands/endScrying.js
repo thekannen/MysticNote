@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { endScryingCore } from '../services/endScryingCore.js';
 import { getSessionName } from '../services/recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'end_scrying' command.
@@ -31,7 +31,7 @@ export async function execute(interaction) {
     if (!sessionName) {
       const message = 'No active scrying session found. Please start a session first.';
       await interaction.reply({ content: message, ephemeral: true });
-      verboseLog('No active scrying session found. Please start a session first.');
+      logger('No active scrying session found. Please start a session first.', 'verbose');
       setScryingSessionActive(false);
       return;
     }

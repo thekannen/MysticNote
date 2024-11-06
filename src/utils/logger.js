@@ -73,12 +73,3 @@ export function logger(message, level = 'info') {
       });
   }
 }
-
-/**
- * Logs a verbose message if the current log level is 'verbose' or lower.
- *
- * @param {string} message - The message to log.
- */
-export function verboseLog(message) {
-  logger(message, 'verbose');
-}

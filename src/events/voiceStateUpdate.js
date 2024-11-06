@@ -37,12 +37,12 @@ export async function handleVoiceStateUpdate(oldState, newState) {
       // User joins a voice channel
       if (!oldChannelId && newChannelId) {
         await startRecording(connection, userId, username);
-        //logger(`Started recording for user ${username} (ID: ${userId})`, 'info');
+        logger(`Started recording for user ${username} (ID: ${userId})`, 'verbose');
       }
       // User leaves the voice channel
       else if (oldChannelId && !newChannelId) {
         await stopRecording(userId);
-        //logger(`Stopped recording for user ${username} (ID: ${userId})`, 'info');
+        logger(`Stopped recording for user ${username} (ID: ${userId})`, 'verbose');
       }
       // User switches voice channels
       else if (oldChannelId !== newChannelId) {

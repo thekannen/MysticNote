@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { SlashCommandBuilder } from 'discord.js';
 import { getDirName } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'reveal_summary' command.
@@ -31,7 +31,7 @@ export async function execute(interaction) {
         content: 'Please provide a valid session name to summarize.',
         ephemeral: true,
       });
-      verboseLog('Invalid or empty session name provided for summary.');
+      logger('Invalid or empty session name provided for summary.', 'verbose');
       return;
     }
 
@@ -50,7 +50,7 @@ export async function execute(interaction) {
         content: `No session named "${sanitizedSessionName}" found.`,
         ephemeral: true,
       });
-      verboseLog(`No session named "${sanitizedSessionName}" found.`);
+      logger(`No session named "${sanitizedSessionName}" found.`, 'verbose');
       return;
     }
 
@@ -65,7 +65,7 @@ export async function execute(interaction) {
         content: 'No summary found for the specified session.',
         ephemeral: true,
       });
-      verboseLog('No summary found for the specified session.');
+      logger('No summary found for the specified session.', 'verbose');
       return;
     }
 
@@ -101,13 +101,13 @@ export async function execute(interaction) {
           ephemeral: false,
         });
       }
-      verboseLog(`Displayed summary for session "${sanitizedSessionName}".`);
+      logger(`Displayed summary for session "${sanitizedSessionName}".`, 'verbose');
     } else {
       await interaction.reply({
         content: 'Unable to reveal the summary of the vision.',
         ephemeral: true,
       });
-      verboseLog('Unable to reveal the summary of the vision.');
+      logger('Unable to reveal the summary of the vision.', 'verbose');
     }
   } catch (error) {
     // Log and notify user if an error occurs

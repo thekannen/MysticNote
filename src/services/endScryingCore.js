@@ -1,6 +1,6 @@
 import { transcribeAndSaveSessionFolder } from './transcriptionService.js';
 import { stopRecording, getSessionName, setScryingSessionActive, setSessionName } from './recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Core function to end the scrying session.
@@ -19,7 +19,7 @@ export async function endScryingCore(channel) {
       return;
     }
 
-    verboseLog('Stopping recording and processing transcription...', 'info');
+    logger('Stopping recording and processing transcription...', 'verbose');
 
     // Stop all active recordings
     await stopRecording();
@@ -46,6 +46,6 @@ export async function endScryingCore(channel) {
     // Clear session state
     setSessionName(null);
     setScryingSessionActive(false);
-    verboseLog('Session state reset after transcription process.', 'info');
+    logger('Session state reset after transcription process.', 'verbose');
   }
 }

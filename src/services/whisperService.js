@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
 import { getDirName } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 // Promisify execFile for async/await
 const execFileAsync = promisify(execFile);
@@ -22,7 +22,7 @@ const pythonCommand = os.platform() === 'win32' ? 'python' : 'python3';
  * @returns {Promise<Array|null>} - The transcription segments or null if an error occurs.
  */
 export async function transcribeFileWithWhisper(filePath, username) {
-  verboseLog(`Starting transcription for ${username} with file at: ${filePath}`);
+  logger(`Starting transcription for ${username} with file at: ${filePath}`, 'verbose');
 
   try {
     const { stdout, stderr } = await execFileAsync(pythonCommand, [pythonScript, filePath]);
@@ -39,16 +39,16 @@ export async function transcribeFileWithWhisper(filePath, username) {
 
     try {
       const segments = JSON.parse(stdout);
-      // verboseLog(`Parsed transcription segments for ${username}: ${JSON.stringify(segments, null, 2)}`);
+      // logger(`Parsed transcription segments for ${username}: ${JSON.stringify(segments, null, 2)}`, 'debug');
       return segments;
     } catch (parseError) {
       logger(`Failed to parse transcription output for ${username}: ${parseError.message}`, 'error');
-      verboseLog(`Output received: ${stdout}`);
+      logger(`Output received: ${stdout}`, 'debug');
       return null;
     }
   } catch (error) {
     logger(`Error during transcription for ${username}: ${error.message}`, 'error');
-    verboseLog(`Stack trace: ${error.stack}`);
+    logger(`Stack trace: ${error.stack}`, 'debug');
     return null;
   }
 }

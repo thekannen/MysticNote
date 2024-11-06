@@ -4,11 +4,12 @@ dotenv.config({ path: '../.env' });
 import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import config from '../config/config.js';
 import { getAttendees } from './transcriptionService.js';
 import { encoding_for_model } from '@dqbd/tiktoken';
+import { log } from 'console';
 
 const transcriptsDir = path.join(getDirName(), '../../bin/transcripts');
 const modelFilePath = path.join(getDirName(), '../utils/modelTokenLimits.json');
@@ -41,8 +42,8 @@ function initializeModelSettings(modelName) {
   const maxCompletionTokens = Math.floor(maxTokens * 0.25); // Reserve 25% for completion
   const maxPromptTokens = maxTokens - maxCompletionTokens;
 
-  verboseLog(
-    `Initialized ${modelName} settings: maxTokens = ${maxTokens}, maxPromptTokens = ${maxPromptTokens}, maxCompletionTokens = ${maxCompletionTokens}`
+  logger(
+    `Initialized ${modelName} settings: maxTokens = ${maxTokens}, maxPromptTokens = ${maxPromptTokens}, maxCompletionTokens = ${maxCompletionTokens}`, 'debug'
   );
   return { maxTokens, maxPromptTokens, maxCompletionTokens };
 }
@@ -98,7 +99,7 @@ async function retryRequest(requestFn, retries = 3) {
     try {
       return await requestFn();
     } catch (error) {
-      verboseLog(`Attempt ${attempt} failed: ${error.message}`);
+      logger(`Attempt ${attempt} failed: ${error.message}`, 'warn');
       if (attempt === retries) throw new Error(`All ${retries} attempts failed`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2; // Exponential backoff
@@ -124,8 +125,8 @@ export async function generateSummary(transcriptionText, sessionName) {
   for (const [index, chunk] of chunks.entries()) {
     const prompt = generatePrompt(chunk);
 
-    verboseLog(
-      `Sending API request for chunk ${index + 1}/${chunks.length} with token length: ${tokenizer.encode(prompt).length}`
+    logger(
+      `Sending API request for chunk ${index + 1}/${chunks.length} with token length: ${tokenizer.encode(prompt).length}`, 'debug'
     );
 
     try {
@@ -150,10 +151,10 @@ export async function generateSummary(transcriptionText, sessionName) {
       if (response.ok && data.choices && data.choices[0]?.message?.content) {
         const chunkSummary = data.choices[0].message.content.trim();
         summaries.push(chunkSummary);
-        // verboseLog(`Chunk summary generated: ${chunkSummary}`);
+        // logger(`Chunk summary generated: ${chunkSummary}`, 'debug');
       } else {
         logger('No summary available for this chunk.', 'error');
-        verboseLog(`API response: ${JSON.stringify(data)}`);
+        logger(`API response: ${JSON.stringify(data)}`, 'debug');
       }
     } catch (apiError) {
       logger(`Failed to generate summary for chunk after retries: ${apiError.message}`, 'error');
@@ -173,8 +174,8 @@ export async function generateSummary(transcriptionText, sessionName) {
       continue; // Go back to summarizing the smaller chunks
     }
 
-    verboseLog(
-      `Sending API request for combined summary with token length: ${tokenizer.encode(prompt).length}`
+    logger(
+      `Sending API request for combined summary with token length: ${tokenizer.encode(prompt).length}`, 'debug'
     );
 
     try {
@@ -199,10 +200,10 @@ export async function generateSummary(transcriptionText, sessionName) {
       if (response.ok && data.choices && data.choices[0]?.message?.content) {
         const combinedSummary = data.choices[0].message.content.trim();
         summaries = [combinedSummary]; // Replace with the new combined summary
-        // verboseLog(`Combined summary generated: ${combinedSummary}`);
+        // logger(`Combined summary generated: ${combinedSummary}`, 'debug');
       } else {
         logger('No combined summary available.', 'error');
-        verboseLog(`API response: ${JSON.stringify(data)}`);
+        logger(`API response: ${JSON.stringify(data)}`, 'debug');
         break; // Exit the loop if unable to summarize further
       }
     } catch (apiError) {
@@ -235,7 +236,7 @@ async function saveSummaryToFile(sessionTranscriptsDir, sessionName, summary) {
     const summaryFilePath = path.join(sessionTranscriptsDir, `summary_${sessionName}_${localTimestamp}.txt`);
     await fs.writeFile(summaryFilePath, summary, 'utf8');
     logger(`Summary successfully saved to ${summaryFilePath}`, 'info');
-    verboseLog(`Summary saved to file path: ${summaryFilePath}`);
+    logger(`Summary saved to file path: ${summaryFilePath}`, 'verbose');
   } catch (error) {
     logger(`Error saving summary to file: ${error.message}`, 'error');
   }

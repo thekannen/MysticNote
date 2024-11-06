@@ -4,7 +4,7 @@ import {
   isScryingSessionOngoing,
   clearConnection,
 } from '../services/recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'leave' command.
@@ -74,7 +74,7 @@ export async function execute(interaction) {
       `Error while attempting to leave voice channel: ${error.message}`,
       'error'
     );
-    verboseLog(`Stack trace: ${error.stack}`);
+    logger(`Stack trace: ${error.stack}`, 'debug');
 
     // Attempt to reply to the interaction if possible
     try {

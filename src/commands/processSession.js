@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
 import { setSessionName, setScryingSessionActive } from '../services/recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'process_session' command.
@@ -28,7 +28,7 @@ export async function execute(interaction) {
         content: 'Please provide a valid session name to reprocess.',
         ephemeral: true,
       });
-      verboseLog('No session name provided for reprocessing.');
+      logger('No session name provided for reprocessing.', 'verbose');
       return;
     }
 

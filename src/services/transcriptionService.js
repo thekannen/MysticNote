@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import { transcribeFileWithWhisper } from './whisperService.js';
 import { generateSummary } from './summaryService.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 import config from '../config/config.js';
 import { DateTime } from 'luxon';
 
@@ -94,7 +94,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
 
   try {
     await fs.mkdir(sessionTranscriptsDir, { recursive: true });
-    verboseLog(`Created directory for transcripts: ${sessionTranscriptsDir}`);
+    logger(`Created directory for transcripts: ${sessionTranscriptsDir}`, 'verbose');
   } catch (error) {
     logger(`Failed to create transcripts directory: ${error.message}`, 'error');
     return { summary: null, transcriptionFile: null };
@@ -140,9 +140,9 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
       await fs.access(`${timestampFilePath}.gz`);
       timestampFilePath = `${timestampFilePath}.gz`;
       isCompressed = true;
-      verboseLog(`Found compressed timestamps for ${username} at ${timestampFilePath}`);
+      logger(`Found compressed timestamps for ${username} at ${timestampFilePath}`, 'debug');
     } catch {
-      verboseLog(`No compressed timestamps found for ${username}, using uncompressed ${timestampFilePath}`);
+      logger(`No compressed timestamps found for ${username}, using uncompressed ${timestampFilePath}`, 'debug');
     }
 
     let timestampsData = null;
@@ -166,9 +166,9 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
       );
 
       transcriptions.push(...adjustedSegments);
-      verboseLog(`Transcription segments added for ${username} from file: ${filePath}`);
+      logger(`Transcription segments added for ${username} from file: ${filePath}`, 'debug');
     } else {
-      verboseLog(`No transcription segments found for ${filePath}`, 'warn');
+      logger(`No transcription segments found for ${filePath}`, 'warn');
     }
 
     // Optionally, compress the timestamps.json if not already compressed
@@ -176,7 +176,7 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
       try {
         await writeJsonFile(timestampFilePath, timestampsData, true);
         await fs.unlink(timestampFilePath); // Remove the uncompressed file
-        verboseLog(`Compressed timestamps for ${username} to ${timestampFilePath}.gz`);
+        logger(`Compressed timestamps for ${username} to ${timestampFilePath}.gz`, 'debug');
       } catch (error) {
         logger(`Failed to compress timestamps for ${username}: ${error.message}`, 'error');
       }
@@ -275,14 +275,14 @@ function adjustTranscriptionSegments(segments, timestampsData, username, audioSe
     const startPosition = segment.start * bytesPerSecond;
     const endPosition = segment.end * bytesPerSecond;
 
-    //verboseLog(`Mapping segment ${index + 1} for ${username}: StartPosition=${startPosition}, EndPosition=${endPosition}`);
+    // logger(`Mapping segment ${index + 1} for ${username}: StartPosition=${startPosition}, EndPosition=${endPosition}`, 'debug');
 
     // Map positions to system times
     const wallClockStartTime = mapPositionToWallClockTime(startPosition, timestamps);
     const wallClockEndTime = mapPositionToWallClockTime(endPosition, timestamps);
 
     if (wallClockStartTime && wallClockEndTime) {
-      verboseLog(`Mapped times for segment ${index + 1} of ${username}: Start=${wallClockStartTime}, End=${wallClockEndTime}`);
+      // logger(`Mapped times for segment ${index + 1} of ${username}: Start=${wallClockStartTime}, End=${wallClockEndTime}`, 'debug');
       return {
         start: DateTime.fromMillis(wallClockStartTime),
         end: DateTime.fromMillis(wallClockEndTime),
@@ -320,7 +320,7 @@ function mapPositionToWallClockTime(position, timestamps) {
       const timeDiff = currentEntry.time - prevEntry.time;
       const mappedTime = prevEntry.time + ratio * timeDiff;
 
-      //verboseLog(`Mapping position=${position} between positions=${prevEntry.position} and ${currentEntry.position} to time=${mappedTime}`);
+      // logger(`Mapping position=${position} between positions=${prevEntry.position} and ${currentEntry.position} to time=${mappedTime}`, 'debug');
 
       return mappedTime;
     }
@@ -328,17 +328,17 @@ function mapPositionToWallClockTime(position, timestamps) {
 
   // If position is before the first timestamp
   if (position < timestamps[0].position) {
-    //verboseLog(`Position=${position} is before the first timestamp. Mapping to first time=${timestamps[0].time}`);
+    // logger(`Position=${position} is before the first timestamp. Mapping to first time=${timestamps[0].time}`, 'debug');
     return timestamps[0].time;
   }
 
   // If position is after the last timestamp
   if (position > timestamps[timestamps.length - 1].position) {
-    //verboseLog(`Position=${position} is after the last timestamp. Mapping to last time=${timestamps[timestamps.length - 1].time}`);
+    // logger(`Position=${position} is after the last timestamp. Mapping to last time=${timestamps[timestamps.length - 1].time}`, 'debug');
     return timestamps[timestamps.length - 1].time;
   }
 
-  verboseLog(`Position=${position} could not be mapped.`);
+  logger(`Position=${position} could not be mapped.`, 'debug');
   return null; // Position could not be mapped
 }
 
@@ -352,7 +352,7 @@ function aggregateTranscriptions(transcriptions) {
   // Sort all transcription segments by start time
   transcriptions.sort((a, b) => a.start.toMillis() - b.start.toMillis());
 
-  verboseLog(`Transcriptions sorted by start time.`);
+  logger(`Transcriptions sorted by start time.`, 'verbose');
 
   return transcriptions;
 }

@@ -6,7 +6,7 @@ import {
 } from '@discordjs/voice';
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { setConnection } from '../services/recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'gaze' command.
@@ -30,7 +30,7 @@ export async function execute(interaction) {
         'Please join a voice channel in a server for the scrying to commence.',
       ephemeral: true,
     });
-    verboseLog('User is not in a voice channel or guild.');
+    logger('User is not in a voice channel or guild.', 'verbose');
     return null;
   }
 
@@ -46,7 +46,7 @@ export async function execute(interaction) {
       content: 'I need permission to join and speak in your voice channel!',
       ephemeral: true,
     });
-    verboseLog('Bot lacks permissions to join or speak in the voice channel.');
+    logger('Bot lacks permissions to join or speak in the voice channel.', 'verbose');
     return null;
   }
 
@@ -126,7 +126,7 @@ export async function execute(interaction) {
   } catch (error) {
     // Log the error and notify the user if joining fails
     logger(`Error joining voice channel: ${error.message}`, 'error');
-    verboseLog(`Stack trace: ${error.stack}`);
+    logger(`Stack trace: ${error.stack}`);
 
     if (interaction.deferred) {
       await interaction.editReply({

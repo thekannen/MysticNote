@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { SlashCommandBuilder } from 'discord.js';
 import { getDirName } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'purge' command.
@@ -32,7 +32,7 @@ export async function execute(interaction) {
         content: 'Purge canceled. No sessions were deleted.',
         ephemeral: true,
       });
-      verboseLog('Purge canceled. No sessions were deleted.');
+      logger('Purge canceled. No sessions were deleted.', 'verbose');
       return;
     }
 
@@ -56,7 +56,7 @@ export async function execute(interaction) {
       content: 'All sessions have been purged successfully.',
       ephemeral: true,
     });
-    verboseLog('All sessions have been purged successfully.');
+    logger('All sessions have been purged successfully.', 'verbose');
   } catch (error) {
     // Log any errors encountered during the purge
     logger(`Error purging sessions: ${error.message}`, 'error');

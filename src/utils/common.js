@@ -3,7 +3,7 @@ import path from 'path';
 import { DateTime } from 'luxon';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch'; // Import fetch for Node.js versions below 18
-import { logger, verboseLog } from './logger.js'; // Custom logger utility
+import { logger } from './logger.js'; // Custom logger utility
 import config from '../config/config.js'; // Configuration file
 
 // Helper to get the directory name of the current file
@@ -89,14 +89,14 @@ export function cleanFiles(directory, pattern) {
 export function validateSessionName(sessionName) {
   if (sessionName.length > config.sessionNameMaxLength) {
     const message = `Session name must be no more than ${config.sessionNameMaxLength} characters.`;
-    verboseLog(message);
+    logger(message, 'verbose');
     throw new Error(message);
   }
 
   const sessionFolder = path.join(recordingsDir, sessionName);
   if (fs.existsSync(sessionFolder)) {
     const message = 'A session with this name already exists. Please choose a different name.';
-    verboseLog(message);
+    logger(message, 'verbose');
     throw new Error(message);
   }
 

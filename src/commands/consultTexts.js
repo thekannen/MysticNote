@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { getDirName } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 export const data = {
   name: 'consult_the_texts',
@@ -17,7 +17,7 @@ export async function execute(interaction) {
       await fs.access(transcriptsDir);
     } catch {
       await interaction.reply('No scrying sessions found. The texts are empty.');
-      verboseLog('No scrying sessions found. The texts are empty.');
+      logger('No scrying sessions found. The texts are empty.', 'verbose');
       return;
     }
 
@@ -30,7 +30,7 @@ export async function execute(interaction) {
     // If no session folders are found, notify the user
     if (sessionFolders.length === 0) {
       await interaction.reply('No scrying sessions found. The texts are empty.');
-      verboseLog('No scrying sessions found. The texts are empty.');
+      logger('No scrying sessions found. The texts are empty.', 'verbose');
       return;
     }
 

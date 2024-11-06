@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { SlashCommandBuilder } from 'discord.js';
 import { getDirName } from '../utils/common.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'delete_session' command.
@@ -32,7 +32,7 @@ export async function execute(interaction) {
         content: 'Please provide a valid session name to delete.',
         ephemeral: true,
       });
-      verboseLog('No session name provided or session name is invalid.');
+      logger('No session name provided or session name is invalid.', 'verbose');
       return;
     }
 
@@ -50,7 +50,7 @@ export async function execute(interaction) {
         content: `No session named "${sessionName}" found.`,
         ephemeral: true,
       });
-      verboseLog(`No session named "${sessionName}" found.`);
+      logger(`No session named "${sessionName}" found.`, 'verbose');
       return;
     }
 
@@ -71,7 +71,7 @@ export async function execute(interaction) {
       content: `The session "${sessionName}" has been deleted successfully.`,
       ephemeral: true,
     });
-    verboseLog(`The session "${sessionName}" has been deleted successfully.`);
+    logger(`The session "${sessionName}" has been deleted successfully.`, 'verbose');
   } catch (error) {
     // Log any errors encountered during deletion
     logger(`Error deleting session: ${error.message}`, 'error');

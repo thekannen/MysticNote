@@ -9,7 +9,7 @@ import {
   getActiveConnection,
   setScryingSessionActive,
 } from '../services/recordingService.js';
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Data for the 'begin_scrying' command.
@@ -41,7 +41,7 @@ export async function execute(interaction) {
         content: 'Please provide a session name to begin scrying.',
         ephemeral: true,
       });
-      verboseLog('No session name provided.');
+      logger('No session name provided.', 'verbose');
       return;
     }
 
@@ -51,8 +51,8 @@ export async function execute(interaction) {
         content: `Session name must be no more than ${config.sessionNameMaxLength} characters.`,
         ephemeral: true,
       });
-      verboseLog(
-        `Session name exceeds maximum length of ${config.sessionNameMaxLength} characters.`
+      logger(
+        `Session name exceeds maximum length of ${config.sessionNameMaxLength} characters.`, 'verbose'
       );
       return;
     }
@@ -95,7 +95,7 @@ export async function execute(interaction) {
           'A session with this name already exists. Please choose a different name.',
         ephemeral: true,
       });
-      verboseLog('A session with this name already exists.');
+      logger('A session with this name already exists.', 'verbose');
       return;
     }
 
@@ -109,7 +109,7 @@ export async function execute(interaction) {
         content:
           'The bot is not connected to a voice channel. Please use the `/gaze` command first to connect.',
       });
-      verboseLog('Bot is not connected to a voice channel.');
+      logger('Bot is not connected to a voice channel.', 'verbose');
       return;
     }
 

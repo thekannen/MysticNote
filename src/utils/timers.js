@@ -1,4 +1,4 @@
-import { logger, verboseLog } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 let inactivityTimeout = null;
 
@@ -19,7 +19,7 @@ export function setInactivityTimer(onTimeout, timeoutDuration) {
   // Clear any existing timer
   clearInactivityTimer();
 
-  //verboseLog(`Setting inactivity timer to ${timeoutDuration} ms.`);
+  // logger(`Setting inactivity timer to ${timeoutDuration} ms.`, 'debug');
 
   inactivityTimeout = setTimeout(async () => {
     try {
@@ -42,7 +42,7 @@ export function setInactivityTimer(onTimeout, timeoutDuration) {
  * @param {number} timeoutDuration - Duration in milliseconds before the timer expires.
  */
 export function resetInactivityTimer(onTimeout, timeoutDuration) {
-  //verboseLog('Resetting inactivity timer.');
+  // logger('Resetting inactivity timer.', 'debug');
 
   setInactivityTimer(onTimeout, timeoutDuration);
 }
@@ -54,9 +54,9 @@ export function clearInactivityTimer() {
   if (inactivityTimeout !== null) {
     clearTimeout(inactivityTimeout);
     inactivityTimeout = null;
-    //verboseLog('Inactivity timer cleared.');
+    // logger('Inactivity timer cleared.', 'debug');
   } else {
-    verboseLog('No inactivity timer to clear.');
+    logger('No inactivity timer to clear.', 'debug');
   }
 }
 

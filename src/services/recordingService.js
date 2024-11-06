@@ -7,7 +7,7 @@ import fs from 'fs';
 import prism from 'prism-media';
 import path from 'path';
 import config from '../config/config.js';
-import { verboseLog, logger } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 import { endScryingCore } from './endScryingCore.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName, generateTimestamp, getClient } from '../utils/common.js';
@@ -32,18 +32,18 @@ export function setConnection(conn) {
   logger('Connection established and stored in recordingService', 'info');
 
   // Log specific properties to avoid circular references
-  verboseLog(`Connection details: {
+  logger(`Connection details: {
     guildId: ${conn?.joinConfig?.guildId},
     channelId: ${conn?.joinConfig?.channelId},
     receiverStatus: ${conn?.receiver ? 'active' : 'inactive'}
-  }`);
+  }`, 'verbose');
 }
 
 /**
  * Retrieves the active connection for a given guild
  */
 export function getActiveConnection(guildId) {
-  verboseLog(`Getting active connection for guildId: ${guildId}`);
+  logger(`Getting active connection for guildId: ${guildId}`, 'debug');
   return connection?.joinConfig.guildId === guildId ? connection : null;
 }
 
@@ -61,7 +61,7 @@ export function clearConnection() {
  */
 async function endScryingSession() {
   if (isScryingSessionActive) {
-    verboseLog('Ending scrying session due to inactivity timer.', 'info');
+    logger('Ending scrying session due to inactivity timer.', 'verbose');
     const client = getClient();
     const scryingChannelId = getScryingChannelId(); // Function to get the channel ID
     const channel = client.channels.cache.get(scryingChannelId);
@@ -83,7 +83,7 @@ async function endScryingSession() {
 
     logger('Scrying session ended due to inactivity.', 'info');
   } else {
-    verboseLog('Attempted to end scrying session, but no active session found.', 'info');
+    logger('Attempted to end scrying session, but no active session found.', 'verbose');
   }
 }
 
@@ -93,7 +93,7 @@ export { endScryingSession };
  * Helper to retrieve the active scrying channel ID
  */
 export function getScryingChannelId() {
-  verboseLog(`Getting active scrying channel ID: ${scryingChannelId}`);
+  logger(`Getting active scrying channel ID: ${scryingChannelId}`, 'debug');
   return scryingChannelId;
 }
 
@@ -102,14 +102,14 @@ export function getScryingChannelId() {
  */
 export function setSessionName(sessionName) {
   currentSessionName = sessionName;
-  verboseLog(`Session name set to: ${currentSessionName}`);
+  logger(`Session name set to: ${currentSessionName}`, 'verbose');
 }
 
 /**
  * Retrieves the current session name
  */
 export function getSessionName() {
-  verboseLog(`Retrieving current session name: ${currentSessionName}`);
+  logger(`Retrieving current session name: ${currentSessionName}`, 'verbose');
   return currentSessionName;
 }
 
@@ -120,13 +120,13 @@ export function setScryingSessionActive(isActive, channelId = null) {
   isScryingSessionActive = isActive;
   scryingChannelId = channelId;
 
-  verboseLog(`Scrying session details: isActive=${isActive}, channelId=${channelId}`);
+  logger(`Scrying session details: isActive=${isActive}, channelId=${channelId}`, 'debug');
 
   if (isActive) {
-    verboseLog('Activating scrying session and setting inactivity timer.');
+    logger('Activating scrying session and setting inactivity timer.', 'debug');
     resetInactivityTimer(endScryingSession, INACTIVITY_LIMIT);
   } else {
-    verboseLog('Deactivating scrying session and clearing inactivity timer.');
+    logger('Deactivating scrying session and clearing inactivity timer.', 'debug');
     clearInactivityTimer();
   }
 }
@@ -135,7 +135,7 @@ export function setScryingSessionActive(isActive, channelId = null) {
  * Checks if the scrying session is currently active
  */
 export function isScryingSessionOngoing() {
-  verboseLog(`Checking if scrying session is ongoing: ${isScryingSessionActive}`);
+  logger(`Checking if scrying session is ongoing: ${isScryingSessionActive}`, 'debug');
   return isScryingSessionActive;
 }
 
@@ -225,7 +225,7 @@ export async function startRecording(conn, userId, username) {
       );
       ffmpegProcess.stdin.write(initialSilenceBuffer);
       silenceBufferInserted = true; // Set the flag here
-      verboseLog('Initial silence buffer written to initiate recording.');
+      logger('Initial silence buffer written to initiate recording.', 'debug');
     }
 
     pcmStream.pipe(ffmpegProcess.stdin);
@@ -256,7 +256,7 @@ export async function startRecording(conn, userId, username) {
       recordingData.hasCloseHandler = true;
 
       ffmpegProcess.on('close', () => {
-        logger(`Recording finished for ${username}, saved as ${filePath}`, 'info');
+        logger(`Recording finished for ${username}, saved as ${filePath}`, 'verbose');
 
         // Write timestamps to a JSON file
         const timestampData = {
@@ -265,7 +265,7 @@ export async function startRecording(conn, userId, username) {
         };
         const timestampFilePath = filePath.replace('.wav', '_timestamps.json');
         fs.writeFileSync(timestampFilePath, JSON.stringify(timestampData), 'utf-8');
-        verboseLog(`Timestamps saved for ${username} at ${timestampFilePath}`);
+        logger(`Timestamps saved for ${username} at ${timestampFilePath}`, 'verbose');
 
         // Clean up
         delete userRecordings[userId];
@@ -278,7 +278,7 @@ export async function startRecording(conn, userId, username) {
       ffmpegProcess.on('exit', (code, signal) => {
         logger(
           `FFmpeg process exited for user ${username} with code ${code} and signal ${signal}`,
-          'info'
+          'debug'
         );
       });
     }
@@ -308,13 +308,13 @@ export async function startRecording(conn, userId, username) {
       if (volume > VOLUME_THRESHOLD) {
         if (!isAudioActive) {
           isAudioActive = true;
-          logger(`Audio became active for user ${username}.`, 'debug');
+          // logger(`Audio became active for user ${username}.`, 'debug');
         }
 
         if (silenceTailTimer) {
           clearTimeout(silenceTailTimer);
           silenceTailTimer = null;
-          logger('Silence tail timer cleared due to audio activity.', 'debug');
+          // logger('Silence tail timer cleared due to audio activity.', 'debug');
         }
 
         // Reset inactivity timer globally
@@ -324,10 +324,7 @@ export async function startRecording(conn, userId, username) {
         silenceTailTimer = setTimeout(() => {
           isAudioActive = false; // Mark audio as inactive
           silenceTailTimer = null; // Clear the timer
-          logger(
-            `Silence tail timer expired for user ${username}; marking as inactive.`,
-            'debug'
-          );
+          // logger(`Silence tail timer expired for user ${username}; marking as inactive.`, 'debug');
         }, SILENCE_TAIL_DURATION);
       }
     });
