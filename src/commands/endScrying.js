@@ -1,14 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
-import {
-  transcribeAndSaveSessionFolder,
-} from '../services/transcriptionService.js';
-import {
-  stopRecording,
-  getSessionName,
-  setScryingSessionActive,
-  setSessionName,
-} from '../services/recordingService.js';
-import { clearInactivityTimer } from '../utils/timers.js';
+import { endScryingCore } from '../services/endScryingCore.js';
+import { getSessionName } from '../services/recordingService.js';
 import { logger, verboseLog } from '../utils/logger.js';
 
 /**
@@ -48,29 +40,19 @@ export async function execute(interaction) {
     await interaction.reply({ content: notification, ephemeral: false });
     logger('Stopping recording and processing transcription...', 'info');
 
-    // Stop all active recordings and clear inactivity timer immediately
-    await stopRecording();
-    clearInactivityTimer();
+    // Call the core function
+    await endScryingCore(channel);
 
-    const { summary, transcriptionFile } = await transcribeAndSaveSessionFolder(sessionName);
+    // Optionally, you can notify the user that the process is complete
+    // await interaction.followUp({ content: 'Scrying session ended successfully.', ephemeral: false });
 
-    if (summary) {
-      const successMessage = `The orb dims, and the vision is now sealed in writing…\n\n${summary}`;
-      await interaction.editReply({ content: successMessage });
-      logger(`Transcription saved to ${transcriptionFile}`, 'info');
-    } else {
-      const failureMessage = 'Transcription or summary failed.';
-      await interaction.editReply({ content: failureMessage });
-      logger(failureMessage, 'error');
-    }
   } catch (error) {
     const errorMessage = 'An error occurred while processing the transcription and summary.';
     logger(`Error during end_scrying command: ${error.message}\n${error.stack}`, 'error');
-    await interaction.editReply({ content: errorMessage });
-  } finally {
-    // Clear session state to prevent further recording attempts in this session
-    setSessionName(null);
-    setScryingSessionActive(false);
-    verboseLog('Session state reset after transcription process.');
+    try {
+      await interaction.editReply({ content: errorMessage });
+    } catch (editError) {
+      logger(`Error editing reply: ${editError.message}`, 'error');
+    }
   }
 }

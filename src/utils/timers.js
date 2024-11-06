@@ -19,7 +19,7 @@ export function setInactivityTimer(onTimeout, timeoutDuration) {
   // Clear any existing timer
   clearInactivityTimer();
 
-  verboseLog(`Setting inactivity timer to ${timeoutDuration} ms.`);
+  //verboseLog(`Setting inactivity timer to ${timeoutDuration} ms.`);
 
   inactivityTimeout = setTimeout(async () => {
     try {
@@ -42,7 +42,7 @@ export function setInactivityTimer(onTimeout, timeoutDuration) {
  * @param {number} timeoutDuration - Duration in milliseconds before the timer expires.
  */
 export function resetInactivityTimer(onTimeout, timeoutDuration) {
-  verboseLog('Resetting inactivity timer.');
+  //verboseLog('Resetting inactivity timer.');
 
   setInactivityTimer(onTimeout, timeoutDuration);
 }
@@ -54,7 +54,7 @@ export function clearInactivityTimer() {
   if (inactivityTimeout !== null) {
     clearTimeout(inactivityTimeout);
     inactivityTimeout = null;
-    verboseLog('Inactivity timer cleared.');
+    //verboseLog('Inactivity timer cleared.');
   } else {
     verboseLog('No inactivity timer to clear.');
   }
