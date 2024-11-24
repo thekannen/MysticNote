@@ -1,5 +1,3 @@
-// recordingService.js
-
 'use strict';
 
 import { spawn } from 'child_process';
@@ -11,7 +9,6 @@ import { logger } from '../utils/logger.js';
 import { endScryingCore } from './endScryingCore.js';
 import { resetInactivityTimer, clearInactivityTimer } from '../utils/timers.js';
 import { getDirName, generateTimestamp, getClient } from '../utils/common.js';
-import { execute } from '../commands/endScrying.js';
 
 const recordingsDir = path.join(getDirName(), '../../bin/recordings');
 
@@ -251,6 +248,13 @@ export async function startRecording(conn, userId, username) {
     const recordingData = userRecordings[userId]; // For easier access
     recordingData.bytesReceived = 0; // Initialize bytesReceived
 
+    const FLUSH_INTERVAL = 5 * 60 * 1000; // Every 5 minutes
+
+    // Start the flush timer to periodically save timestamps to disk
+    recordingData.flushTimer = setInterval(() => {
+      flushTimestampsToDisk(recordingData);
+    }, FLUSH_INTERVAL);
+
     // Ensure 'close' event handler is only attached once
     if (!recordingData.hasCloseHandler) {
       recordingData.hasCloseHandler = true;
@@ -258,16 +262,15 @@ export async function startRecording(conn, userId, username) {
       ffmpegProcess.on('close', () => {
         logger(`Recording finished for ${username}, saved as ${filePath}`, 'verbose');
 
-        // Write timestamps to a JSON file
-        const timestampData = {
-          timestamps: recordingData.timestamps,
-          recordingStartTime: recordingData.recordingStartTime,
-        };
-        const timestampFilePath = filePath.replace('.wav', '_timestamps.json');
-        fs.writeFileSync(timestampFilePath, JSON.stringify(timestampData), 'utf-8');
-        logger(`Timestamps saved for ${username} at ${timestampFilePath}`, 'verbose');
+        // Flush any remaining timestamps to disk
+        flushTimestampsToDisk(recordingData, true);
 
         // Clean up
+        if (recordingData.flushTimer) {
+          clearInterval(recordingData.flushTimer);
+          recordingData.flushTimer = null;
+        }
+
         delete userRecordings[userId];
       });
 
@@ -286,13 +289,18 @@ export async function startRecording(conn, userId, username) {
     // Monitor audio activity and reset inactivity timer globally
     pcmStream.on('data', (chunk) => {
       const currentTime = Date.now(); // Current system time in milliseconds
-      recordingData.bytesReceived += chunk.length; // **Only one increment**
+      recordingData.bytesReceived += chunk.length; // Only one increment
 
       // Record the timestamp and position
       recordingData.timestamps.push({
         time: currentTime, // System time
         position: recordingData.bytesReceived, // Cumulative bytes received
       });
+
+      // Limit the size of timestamps array to prevent memory leak
+      if (recordingData.timestamps.length >= 1000) {
+        flushTimestampsToDisk(recordingData);
+      }
 
       // Calculate volume correctly using 16-bit signed integers
       const sampleCount = chunk.length / 2;
@@ -302,8 +310,10 @@ export async function startRecording(conn, userId, username) {
         sum += val * val;
       }
       const volume = Math.sqrt(sum / sampleCount);
-      const VOLUME_THRESHOLD = 2000; // Adjust threshold as needed
+      const VOLUME_THRESHOLD = 500; // Adjust threshold as needed
       const SILENCE_TAIL_DURATION = 1000; // Time in ms before treating silence as end of audio
+
+      // logger(`Volume detected for user ${username}: ${volume}`, 'debug');
 
       if (volume > VOLUME_THRESHOLD) {
         if (!isAudioActive) {
@@ -355,6 +365,32 @@ export async function startRecording(conn, userId, username) {
 }
 
 /**
+ * Flushes the timestamps to disk and clears the in-memory array
+ * @param {Object} recordingData - The recording data object for the user
+ * @param {boolean} isFinalFlush - Whether this is the final flush before ending recording
+ */
+function flushTimestampsToDisk(recordingData, isFinalFlush = false) {
+  if (recordingData.timestamps.length === 0) {
+    return;
+  }
+
+  const timestampData = {
+    timestamps: recordingData.timestamps,
+    recordingStartTime: recordingData.recordingStartTime,
+    isFinalFlush: isFinalFlush,
+  };
+  const timestampFilePath = recordingData.filePath.replace('.wav', '_timestamps.json');
+
+  try {
+    fs.appendFileSync(timestampFilePath, JSON.stringify(timestampData) + '\n', 'utf8');
+    logger(`Flushed ${recordingData.timestamps.length} timestamps to disk for user ${recordingData.username}.`, 'debug');
+    recordingData.timestamps = []; // Clear the array after flushing
+  } catch (error) {
+    logger(`Error writing timestamps to disk for user ${recordingData.username}: ${error.message}`, 'error');
+  }
+}
+
+/**
  * Stops recording for a specified user or all users, handling the cleanup of FFmpeg processes
  */
 export async function stopRecording(userId = null) {
@@ -379,6 +415,15 @@ export async function stopRecording(userId = null) {
 
           // Wait for FFmpeg process to exit
           recordingData.ffmpegProcess.once('close', () => {
+            // Flush any remaining timestamps to disk
+            flushTimestampsToDisk(recordingData, true);
+
+            // Clear the flush timer
+            if (recordingData.flushTimer) {
+              clearInterval(recordingData.flushTimer);
+              recordingData.flushTimer = null;
+            }
+
             delete userRecordings[userId];
             logger(
               `Stopped recording for userId: ${userId}, saved as ${recordingData.filePath}`,
@@ -421,6 +466,15 @@ export async function stopRecording(userId = null) {
 
                 // Wait for FFmpeg process to exit
                 recordingData.ffmpegProcess.once('close', () => {
+                  // Flush any remaining timestamps to disk
+                  flushTimestampsToDisk(recordingData, true);
+
+                  // Clear the flush timer
+                  if (recordingData.flushTimer) {
+                    clearInterval(recordingData.flushTimer);
+                    recordingData.flushTimer = null;
+                  }
+
                   delete userRecordings[activeUserId];
                   logger(
                     `Stopped recording for userId: ${activeUserId}, saved as ${recordingData.filePath}`,

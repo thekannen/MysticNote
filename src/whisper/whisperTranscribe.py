@@ -4,6 +4,7 @@ import json
 import os
 import warnings
 import traceback
+import numpy as np
 
 # Suppress specific warnings from libraries to keep console output clean
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -28,7 +29,7 @@ def load_config():
 
 def transcribe_with_timestamps(file_path, model_name):
     """
-    Transcribes an audio file, providing word-level timestamps.
+    Transcribes an audio file with progress updates, providing word-level timestamps.
 
     Parameters:
         file_path (str): The path to the audio file to transcribe.
@@ -41,27 +42,59 @@ def transcribe_with_timestamps(file_path, model_name):
         # Load the Whisper model
         model = whisper.load_model(model_name)
 
-        # Perform the transcription with Whisper
-        result = model.transcribe(
-            file_path, 
-            condition_on_previous_text=False,
-            word_timestamps=True,  # Enable word-level timestamps
-            verbose=False,
-            language='en'
-        )
+        # Load the audio file
+        audio = whisper.load_audio(file_path)
 
-        # Collect transcription segments with word-level timestamps
+        # Determine total duration in seconds
+        total_duration = audio.shape[0] / whisper.audio.SAMPLE_RATE
+
+        # Define chunk size in seconds (adjust as needed)
+        chunk_size = 30  # or any other value suitable for your use case
+
+        # Calculate the number of chunks
+        num_chunks = int(np.ceil(total_duration / chunk_size))
+
         segments = []
-        for segment in result["segments"]:
-            # Process individual words
-            for word_info in segment["words"]:
-                # Check that word info includes start, end, and text keys
-                if "start" in word_info and "end" in word_info and "word" in word_info:
-                    segments.append({
-                        "start": word_info["start"],
-                        "end": word_info["end"],
-                        "text": word_info["word"]
-                    })
+        language = 'en'  # Assuming English; adjust if needed
+
+        for i in range(num_chunks):
+            # Calculate start and end times for the chunk
+            start_time = i * chunk_size
+            end_time = min((i + 1) * chunk_size, total_duration)
+
+            # Convert times to sample indices
+            start_sample = int(start_time * whisper.audio.SAMPLE_RATE)
+            end_sample = int(end_time * whisper.audio.SAMPLE_RATE)
+
+            # Extract the audio chunk
+            audio_chunk = audio[start_sample:end_sample]
+
+            # Pad or trim the audio chunk to the desired length
+            audio_chunk = whisper.pad_or_trim(audio_chunk)
+
+            # Transcribe the chunk
+            result = model.transcribe(
+                audio_chunk,
+                language=language,
+                condition_on_previous_text=False,
+                word_timestamps=True,
+                verbose=False
+            )
+
+            # Adjust timestamps and collect segments
+            for segment in result["segments"]:
+                for word_info in segment["words"]:
+                    if "start" in word_info and "end" in word_info and "word" in word_info:
+                        segments.append({
+                            "start": word_info["start"] + start_time,
+                            "end": word_info["end"] + start_time,
+                            "text": word_info["word"]
+                        })
+
+            # Calculate and output progress
+            progress = ((i + 1) / num_chunks) * 100
+            print(json.dumps({"progress": progress}), flush=True)
+
         return segments
     except Exception as e:
         print(f"Error during transcription: {e}", file=sys.stderr)

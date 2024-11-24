@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateTimestamp } from './common.js';
 import config from '../config/config.js';
+import { DateTime } from 'luxon'; // Import Luxon for timezone-aware dates
 
 // Get the directory name of the current module (ES modules compatible)
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +51,7 @@ export function logger(message, level = 'info') {
   // Only log messages that are at or above the current log level
   if (logLevel <= currentLogLevel) {
     // Create a timestamp for the log entry
-    const timestamp = generateTimestamp(true);
+    const timestamp = generateTimestamp(true); // Already timezone-aware
 
     // Format the log entry with a standardized structure
     const logEntry = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
@@ -58,9 +59,11 @@ export function logger(message, level = 'info') {
     // Output log entry to the console
     console.log(logEntry);
 
-    // Generate the log file name based on the current date (one per day)
-    const date = new Date();
-    const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Generate the log file name based on the current date in the configured timezone
+    const timezone = config.timezone && config.timezone !== 'local' ? config.timezone : undefined;
+    const now = timezone ? DateTime.now().setZone(timezone) : DateTime.now();
+    const dateString = now.toFormat('yyyy-MM-dd'); // 'YYYY-MM-DD' in configured timezone
+
     const logFileName = `ScryingBot_${hostname}_${dateString}.log`;
     const logFilePath = path.join(logsDir, logFileName);
 
