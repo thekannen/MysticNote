@@ -19,8 +19,6 @@ export async function endScryingCore(channel) {
       return;
     }
 
-    logger('Stopping recording and processing transcription...', 'verbose');
-
     // Stop all active recordings
     await stopRecording();
 

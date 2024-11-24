@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { endScryingCore } from '../services/endScryingCore.js';
-import { getSessionName } from '../services/recordingService.js';
+import { getSessionName, setScryingSessionActive } from '../services/recordingService.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -42,9 +42,6 @@ export async function execute(interaction) {
 
     // Call the core function
     await endScryingCore(channel);
-
-    // Optionally, you can notify the user that the process is complete
-    // await interaction.followUp({ content: 'Scrying session ended successfully.', ephemeral: false });
 
   } catch (error) {
     const errorMessage = 'An error occurred while processing the transcription and summary.';
