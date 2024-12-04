@@ -21,7 +21,6 @@ try {
   // Provide default values for optional properties
   const defaultConfig = {
     botVersion: '1.0.0',
-    inactivityTimeoutMinutes: 60,
     sessionNameMaxLength: 50,
     whisperModel: 'small',
     openAIModel: 'gpt-3.5-turbo',
@@ -46,16 +45,6 @@ try {
   // botVersion should be a non-empty string
   if (typeof config.botVersion !== 'string' || config.botVersion.trim() === '') {
     throw new Error('Configuration property "botVersion" must be a non-empty string.');
-  }
-
-  // inactivityTimeoutMinutes should be a positive number
-  if (
-    typeof config.inactivityTimeoutMinutes !== 'number' ||
-    config.inactivityTimeoutMinutes <= 0
-  ) {
-    throw new Error(
-      'Configuration property "inactivityTimeoutMinutes" must be a positive number.'
-    );
   }
 
   // sessionNameMaxLength should be a positive integer
