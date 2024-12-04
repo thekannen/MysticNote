@@ -1,6 +1,6 @@
 {
   "botVersion": "1.0.1.2",
-  "inactivityTimeoutMinutes": 1,
+  "inactivityTimeoutMinutes": 500,
   "sessionNameMaxLength": 50,
   "whisperModel": "small",
   "openAIModel": "gpt-4o",

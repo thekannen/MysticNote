@@ -259,30 +259,27 @@ export async function startRecording(conn, userId, username) {
     if (!recordingData.hasCloseHandler) {
       recordingData.hasCloseHandler = true;
 
-      ffmpegProcess.on('close', () => {
-        logger(`Recording finished for ${username}, saved as ${filePath}`, 'verbose');
+      ffmpegProcess.on('close', (code, signal) => {
+        logger(
+          `FFmpeg process exited for user ${username} with code ${code} and signal ${signal}`,
+          'debug'
+        );
 
         // Flush any remaining timestamps to disk
         flushTimestampsToDisk(recordingData, true);
 
-        // Clean up
+        // Clear the flush timer
         if (recordingData.flushTimer) {
           clearInterval(recordingData.flushTimer);
           recordingData.flushTimer = null;
         }
 
         delete userRecordings[userId];
+        logger(`Recording finished for ${username}, saved as ${filePath}`, 'verbose');
       });
 
       ffmpegProcess.on('error', (error) => {
         logger(`FFmpeg error for user ${username}: ${error.message}`, 'error');
-      });
-
-      ffmpegProcess.on('exit', (code, signal) => {
-        logger(
-          `FFmpeg process exited for user ${username} with code ${code} and signal ${signal}`,
-          'debug'
-        );
       });
     }
 
@@ -347,18 +344,30 @@ export async function startRecording(conn, userId, username) {
         clearTimeout(silenceTailTimer);
         silenceTailTimer = null;
       }
-      pcmStream.removeAllListeners('data');
+      pcmStream.removeAllListeners(); // Remove all listeners
+    });
+
+    pcmStream.on('close', () => {
+      logger(`PCM stream closed for user ${username}`, 'debug');
+      pcmStream.removeAllListeners(); // Remove all listeners
     });
 
     userStream.on('end', () => {
       logger(`User stream ended for user ${username}`, 'debug');
+      userStream.removeAllListeners(); // Remove all listeners
     });
 
     userStream.on('close', () => {
       logger(`User stream closed for user ${username}`, 'debug');
+      userStream.removeAllListeners(); // Remove all listeners
+    });
+
+    userStream.on('error', (error) => {
+      logger(`User stream error for user ${username}: ${error.message}`, 'error');
     });
 
     logger(`Started recording for user ${username} (ID: ${userId})`, 'info');
+    logger(`Started recording for user ${username} (ID: ${userId})`, 'verbose');
   } catch (error) {
     logger(`Failed to start recording for user ${username}: ${error}`, 'error');
   }
@@ -383,10 +392,16 @@ function flushTimestampsToDisk(recordingData, isFinalFlush = false) {
 
   try {
     fs.appendFileSync(timestampFilePath, JSON.stringify(timestampData) + '\n', 'utf8');
-    logger(`Flushed ${recordingData.timestamps.length} timestamps to disk for user ${recordingData.username}.`, 'debug');
+    logger(
+      `Flushed ${recordingData.timestamps.length} timestamps to disk for user ${recordingData.username}.`,
+      'debug'
+    );
     recordingData.timestamps = []; // Clear the array after flushing
   } catch (error) {
-    logger(`Error writing timestamps to disk for user ${recordingData.username}: ${error.message}`, 'error');
+    logger(
+      `Error writing timestamps to disk for user ${recordingData.username}: ${error.message}`,
+      'error'
+    );
   }
 }
 
@@ -396,57 +411,66 @@ function flushTimestampsToDisk(recordingData, isFinalFlush = false) {
 export async function stopRecording(userId = null) {
   return new Promise((resolve) => {
     if (userId) {
-      if (!userRecordings[userId]) {
+      const recordingData = userRecordings[userId];
+      if (!recordingData) {
         logger(`No active recording found for userId: ${userId}`, 'debug');
         resolve(null);
         return;
       }
 
-      const recordingData = userRecordings[userId];
-      if (recordingData && !recordingData.ffmpegProcess.killed) {
-        try {
-          // Clean up streams
-          recordingData.pcmStream.unpipe();
-          recordingData.pcmStream.destroy();
-          recordingData.userStream.destroy();
+      // Flag to check if process exited
+      let processExited = false;
 
-          // End FFmpeg stdin to signal completion
-          recordingData.ffmpegProcess.stdin.end();
+      const onProcessClose = () => {
+        if (!processExited) {
+          processExited = true;
 
-          // Wait for FFmpeg process to exit
-          recordingData.ffmpegProcess.once('close', () => {
-            // Flush any remaining timestamps to disk
-            flushTimestampsToDisk(recordingData, true);
+          // Flush any remaining timestamps to disk
+          flushTimestampsToDisk(recordingData, true);
 
-            // Clear the flush timer
-            if (recordingData.flushTimer) {
-              clearInterval(recordingData.flushTimer);
-              recordingData.flushTimer = null;
-            }
+          // Clear the flush timer
+          if (recordingData.flushTimer) {
+            clearInterval(recordingData.flushTimer);
+            recordingData.flushTimer = null;
+          }
 
-            delete userRecordings[userId];
-            logger(
-              `Stopped recording for userId: ${userId}, saved as ${recordingData.filePath}`,
-              'debug'
-            );
-            resolve({
-              filePath: recordingData.filePath,
-              userId,
-            });
-          });
-        } catch (err) {
+          delete userRecordings[userId];
           logger(
-            `Error cleaning up resources for userId: ${userId} - ${err.message}`,
-            'error'
+            `Stopped recording for userId: ${userId}, saved as ${recordingData.filePath}`,
+            'debug'
           );
-          resolve(null);
+          resolve({
+            filePath: recordingData.filePath,
+            userId,
+          });
         }
-      } else {
-        logger(
-          `FFmpeg process for userId: ${userId} is no longer active.`,
-          'debug'
-        );
-        resolve(null);
+      };
+
+      // Attach the close listener before ending streams
+      recordingData.ffmpegProcess.once('close', onProcessClose);
+
+      // Ensure all streams are properly destroyed
+      try {
+        recordingData.pcmStream.unpipe();
+        recordingData.pcmStream.destroy();
+        recordingData.userStream.destroy();
+
+        // End FFmpeg stdin to signal completion
+        recordingData.ffmpegProcess.stdin.end(() => {
+          logger(`FFmpeg stdin ended for userId: ${userId}`, 'debug');
+        });
+
+        // In case FFmpeg doesn't exit, forcefully kill it after a timeout
+        setTimeout(() => {
+          if (!processExited) {
+            logger(`Forcefully killing FFmpeg process for userId: ${userId}`, 'warn');
+            recordingData.ffmpegProcess.kill('SIGTERM');
+          }
+        }, 5000); // Wait 5 seconds before force-killing
+      } catch (err) {
+        logger(`Error cleaning up resources for userId: ${userId} - ${err.message}`, 'error');
+        // Ensure we still resolve the promise
+        onProcessClose();
       }
     } else {
       // Stops recording for all active users
@@ -454,50 +478,68 @@ export async function stopRecording(userId = null) {
         async (activeUserId) => {
           return new Promise((stopResolve) => {
             const recordingData = userRecordings[activeUserId];
-            if (recordingData && !recordingData.ffmpegProcess.killed) {
-              try {
-                // Clean up streams
-                recordingData.pcmStream.unpipe();
-                recordingData.pcmStream.destroy();
-                recordingData.userStream.destroy();
-
-                // End FFmpeg stdin to signal completion
-                recordingData.ffmpegProcess.stdin.end();
-
-                // Wait for FFmpeg process to exit
-                recordingData.ffmpegProcess.once('close', () => {
-                  // Flush any remaining timestamps to disk
-                  flushTimestampsToDisk(recordingData, true);
-
-                  // Clear the flush timer
-                  if (recordingData.flushTimer) {
-                    clearInterval(recordingData.flushTimer);
-                    recordingData.flushTimer = null;
-                  }
-
-                  delete userRecordings[activeUserId];
-                  logger(
-                    `Stopped recording for userId: ${activeUserId}, saved as ${recordingData.filePath}`,
-                    'debug'
-                  );
-                  stopResolve({
-                    filePath: recordingData.filePath,
-                    userId: activeUserId,
-                  });
-                });
-              } catch (err) {
-                logger(
-                  `Error cleaning up resources for userId: ${activeUserId} - ${err.message}`,
-                  'error'
-                );
-                stopResolve(null);
-              }
-            } else {
-              logger(
-                `FFmpeg process for userId: ${activeUserId} is no longer active.`,
-                'debug'
-              );
+            if (!recordingData) {
+              logger(`No active recording found for userId: ${activeUserId}`, 'debug');
               stopResolve(null);
+              return;
+            }
+
+            // Flag to check if process exited
+            let processExited = false;
+
+            const onProcessClose = () => {
+              if (!processExited) {
+                processExited = true;
+
+                // Flush any remaining timestamps to disk
+                flushTimestampsToDisk(recordingData, true);
+
+                // Clear the flush timer
+                if (recordingData.flushTimer) {
+                  clearInterval(recordingData.flushTimer);
+                  recordingData.flushTimer = null;
+                }
+
+                delete userRecordings[activeUserId];
+                logger(
+                  `Stopped recording for userId: ${activeUserId}, saved as ${recordingData.filePath}`,
+                  'debug'
+                );
+                stopResolve({
+                  filePath: recordingData.filePath,
+                  userId: activeUserId,
+                });
+              }
+            };
+
+            // Attach the close listener before ending streams
+            recordingData.ffmpegProcess.once('close', onProcessClose);
+
+            // Ensure all streams are properly destroyed
+            try {
+              recordingData.pcmStream.unpipe();
+              recordingData.pcmStream.destroy();
+              recordingData.userStream.destroy();
+
+              // End FFmpeg stdin to signal completion
+              recordingData.ffmpegProcess.stdin.end(() => {
+                logger(`FFmpeg stdin ended for userId: ${activeUserId}`, 'debug');
+              });
+
+              // In case FFmpeg doesn't exit, forcefully kill it after a timeout
+              setTimeout(() => {
+                if (!processExited) {
+                  logger(`Forcefully killing FFmpeg process for userId: ${activeUserId}`, 'warn');
+                  recordingData.ffmpegProcess.kill('SIGTERM');
+                }
+              }, 5000); // Wait 5 seconds before force-killing
+            } catch (err) {
+              logger(
+                `Error cleaning up resources for userId: ${activeUserId} - ${err.message}`,
+                'error'
+              );
+              // Ensure we still resolve the promise
+              onProcessClose();
             }
           });
         }
