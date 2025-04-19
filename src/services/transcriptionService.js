@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import zlib from 'zlib';
 import { promisify } from 'util';
-import { transcribeFileWithWhisper } from './whisperService.js';
+import { transcribe } from '../transcription/whisperClient.js';
 import { generateSummary } from './summaryService.js';
 import { getDirName, generateTimestamp } from '../utils/common.js';
 import { logger } from '../utils/logger.js';
@@ -152,7 +152,8 @@ export async function transcribeAndSaveSessionFolder(sessionName) {
       }
 
       // Transcribe the audio file
-      const transcriptionSegments = await transcribeFileWithWhisper(filePath, username);
+      // Transcribe via FastAPI whisper microservice
+      const { segments: transcriptionSegments } = await transcribe([{ speaker: username, filePath }]);
 
       if (transcriptionSegments && transcriptionSegments.length > 0) {
         // Adjust segment times using positions

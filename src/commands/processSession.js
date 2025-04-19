@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { transcribeAndSaveSessionFolder } from '../services/transcriptionService.js';
+import handleSession from '../orchestrator.js';
 import { setSessionName, setScryingSessionActive } from '../services/recordingService.js';
 import { logger } from '../utils/logger.js';
 
@@ -43,15 +43,15 @@ export async function execute(interaction) {
     setScryingSessionActive(false);
     setSessionName(null);
 
-    // Transcribe and summarize the session
-    const { summary, transcriptionFile } = await transcribeAndSaveSessionFolder(sessionName);
+    // Orchestrate transcription and summarization
+    const summary = await handleSession(sessionName);
 
     // Provide feedback on completion or failure
     if (summary) {
       await interaction.editReply({
         content: `The orb dims, and the vision is now sealed in writing…\n\n${summary}`,
       });
-      logger(`Transcription successfully saved to ${transcriptionFile}`, 'info');
+      logger(`Transcription and summary completed for session ${sessionName}`, 'info');
     } else {
       await interaction.editReply({
         content: 'Transcription or summary generation failed.',
