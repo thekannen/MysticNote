@@ -3,9 +3,20 @@
   "sessionNameMaxLength": 50,
   "whisperModel": "small",
   "openAIModel": "gpt-4o",
-  "saveRecordings": true, 
+  "saveRecordings": true,
   "audioQuality": "low",
   "logLevel": "debug",
   "logsDirectory": "../bin/logs",
-  "timezone": "local"
+  "timezone": "local",
+  "transcriptionService": {
+    "url": "http://localhost:8000/transcribe",
+    "timeoutMs": 600000
+  },
+  "summarizer": {
+    "chunkTokenSize": 2000,
+    "rateLimit": {
+      "requestsPerSecond": 3,
+      "maxConcurrent": 2
+    }
+  }
 }
