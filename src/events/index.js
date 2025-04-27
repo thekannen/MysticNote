@@ -1,5 +1,15 @@
-import fs from 'fs';
+// Add at the very top of the file
+import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Adjust path as needed to reach your .env one level up
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+import fs from 'fs';
 import { Collection } from 'discord.js';
 import { getDirName } from '../utils/common.js';
 import { logger } from '../utils/logger.js';
