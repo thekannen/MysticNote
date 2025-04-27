@@ -1,7 +1,14 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from project root .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -10,9 +17,10 @@ const client = new Client({
 
 // load commands
 client.commands = new Collection();
-const commandsPath = path.resolve('src/commands');
+const commandsPath = path.join(__dirname, 'commands');
 for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
-  const { data, execute } = await import(`./commands/${file}`);
+  const filePath = path.join(commandsPath, file);
+  const { data, execute } = await import(pathToFileURL(filePath).href);
   client.commands.set(data.name, { data, execute });
 }
 
