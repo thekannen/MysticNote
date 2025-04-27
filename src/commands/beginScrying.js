@@ -9,7 +9,12 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction) {
-  const name = interaction.options.getString('name');
+  const rawName = interaction.options.getString('name');
+  const name = rawName?.trim();
+  if (!name) {
+    await interaction.reply({ content: 'Please provide a valid session name!', ephemeral: true });
+    return;
+  }
   try {
     await beginSession(name, interaction.member.voice.channel, interaction.channel);
     await interaction.reply(`✅ Recording started for session **${name}**.`);
